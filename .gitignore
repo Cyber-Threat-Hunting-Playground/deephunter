@@ -9,3 +9,4 @@ static/tokendate.txt
 static/html
 docs/_build
 plugins/*.py
+.github/workflows/codeguard.yml

@@ -1,0 +1,72 @@
+name: Sync from Upstream
+
+on:
+  #schedule:
+    # Run daily at 2 AM UTC
+    #- cron: '0 2 * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/sebastiendamaye/deephunter.git || true
+          git fetch upstream
+      
+      - name: Merge upstream changes (excluding .github)
+        run: |
+          # Create a temporary branch for merging
+          git checkout -b temp-upstream-sync
+          
+          # Merge changes from upstream/main (or master)
+          # Try main first, fall back to master if main doesn't exist
+          if git rev-parse --verify upstream/main >/dev/null 2>&1; then
+            UPSTREAM_BRANCH="upstream/main"
+          else
+            UPSTREAM_BRANCH="upstream/master"
+          fi
+          
+          echo "Merging from $UPSTREAM_BRANCH"
+          
+          # Merge with strategy to keep our .github folder
+          git merge $UPSTREAM_BRANCH --no-commit --no-ff || true
+          
+          # Reset .github folder to our version
+          git checkout HEAD -- .github/ || true
+          
+          # Complete the merge
+          if git diff --cached --quiet; then
+            echo "No changes to sync"
+            exit 0
+          fi
+          
+          git commit -m "Sync from upstream (excluding .github folder)" || true
+          
+          # Switch back to main branch
+          git checkout main || git checkout master
+          
+          # Merge the changes
+          git merge temp-upstream-sync --ff-only || git merge temp-upstream-sync
+          
+          # Clean up temporary branch
+          git branch -d temp-upstream-sync
+      
+      - name: Push changes
+        run: |
+          git push origin HEAD
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
