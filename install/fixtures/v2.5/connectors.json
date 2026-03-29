@@ -132,6 +132,17 @@
         }
     },
     {
+        "model": "connectors.connector",
+        "pk": 13,
+        "fields": {
+            "name": "openai-custom",
+            "description": "This plugin integrates any OpenAI-compatible server (e.g. Ollama, vLLM, LM Studio, llama.cpp, LocalAI) to suggest MITRE techniques based on a given query.\n\nUnlike the standard OpenAI plugin, this one lets you configure a custom BASE_URL so requests are sent to your own server instead of the OpenAI cloud.",
+            "installed": false,
+            "enabled": false,
+            "domain": "ai"
+        }
+    },
+    {
         "model": "connectors.connectorconf",
         "pk": 1,
         "fields": {
@@ -668,6 +679,39 @@
             "value": "gpt-5",
             "fieldtype": "char",
             "description": "\"gpt-5 by default."
+        }
+    },
+    {
+        "model": "connectors.connectorconf",
+        "pk": 87,
+        "fields": {
+            "connector": 13,
+            "key": "BASE_URL",
+            "value": "http://localhost:11434/v1",
+            "fieldtype": "url",
+            "description": "Base URL of your OpenAI-compatible server (e.g. \"http://localhost:11434/v1\" for Ollama, \"http://localhost:8000/v1\" for vLLM)."
+        }
+    },
+    {
+        "model": "connectors.connectorconf",
+        "pk": 88,
+        "fields": {
+            "connector": 13,
+            "key": "API_KEY",
+            "value": "not-needed",
+            "fieldtype": "password",
+            "description": "API key for the custom server. Use \"not-needed\" if the server does not require authentication."
+        }
+    },
+    {
+        "model": "connectors.connectorconf",
+        "pk": 89,
+        "fields": {
+            "connector": 13,
+            "key": "MODEL",
+            "value": "llama3",
+            "fieldtype": "char",
+            "description": "Model name served by your custom server (e.g. \"llama3\", \"mistral\", \"codellama\")."
         }
     }
 ]
