@@ -23,15 +23,6 @@ for loader, module_name, is_pkg in pkgutil.iter_modules(plugins.__path__):
     module = importlib.import_module(f"plugins.{module_name}")
     all_connectors[module_name] = module
 
-# Repo-domain plugins are framework-agnostic; inject DeepHunter config here.
-for _name in ('github', 'bitbucket'):
-    _mod = all_connectors.get(_name)
-    if _mod and hasattr(_mod, 'init_globals'):
-        _mod.init_globals(
-            proxy=settings.PROXY,
-            timeout=getattr(settings, "REPO_CONNECTOR_HTTP_TIMEOUT", (5, 30)),
-            on_error=add_error_notification,
-        )
 
 PROXY = settings.PROXY
 REPO_IMPORT_CREATE_FIELD_IF_NOT_EXIST = settings.REPO_IMPORT_CREATE_FIELD_IF_NOT_EXIST
@@ -61,10 +52,19 @@ def get_repo_import_info(request, repo_id):
 @permission_required("repos.import", raise_exception=True)
 def import_repo_select_analytics(request, repo_id):
     repo = get_object_or_404(Repo, pk=repo_id)
+    contents = []
     if "github.com" in repo.url:
-        contents = all_connectors.get('github').get_github_contents(repo)
+        connector = all_connectors.get('github')
+        if connector:
+            contents = connector.get_github_contents(repo)
+        else:
+            add_error_notification(f"GitHub plugin is not installed. Cannot import from {repo.url}")
     elif "bitbucket.org" in repo.url:
-        contents = all_connectors.get('bitbucket').get_bitbucket_contents(repo)
+        connector = all_connectors.get('bitbucket')
+        if connector:
+            contents = connector.get_bitbucket_contents(repo)
+        else:
+            add_error_notification(f"Bitbucket plugin is not installed. Cannot import from {repo.url}")
     context = {
         "repo": repo,
         "contents": contents,

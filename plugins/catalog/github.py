@@ -1,18 +1,13 @@
 """
 GitHub connector
 Used for repo sync with GitHub
-
-This module is intentionally free of Django / DeepHunter imports so it can be
-used (and tested) as a standalone library.  Call ``init_globals()`` once before
-use to inject runtime configuration; sensible defaults are applied otherwise.
 """
 
 from urllib.parse import urlparse
-from pathlib import Path
-import logging
 import requests
-
-logger = logging.getLogger(__name__)
+from django.conf import settings
+from pathlib import Path
+from notifications.utils import add_error_notification
 
 
 def get_connector_metadata():
@@ -23,29 +18,15 @@ def get_connector_metadata():
     }
 
 _globals_initialized = False
-_on_error = logger.error
-
-def init_globals(proxy=None, timeout=(5, 30), on_error=None):
-    """Inject runtime configuration.
-
-    Parameters
-    ----------
-    proxy : dict | None
-        ``requests``-compatible proxy mapping.  Defaults to ``{}``.
-    timeout : tuple | int
-        ``requests`` timeout (connect, read).  Defaults to ``(5, 30)``.
-    on_error : callable | None
-        Single-argument callable invoked with an error message string.
-        Defaults to ``logger.error``.
-    """
-    global DEBUG, PROXY, HTTP_TIMEOUT, _on_error
+def init_globals():
+    global DEBUG, PROXY, HTTP_TIMEOUT
     global _globals_initialized
-    if on_error is not None:
-        _on_error = on_error
     if not _globals_initialized:
         DEBUG = False
-        PROXY = proxy if proxy is not None else {}
-        HTTP_TIMEOUT = timeout
+        PROXY = settings.PROXY
+        # Prevent connector calls from hanging indefinitely on network issues.
+        # Tuple form is (connect timeout seconds, read timeout seconds).
+        HTTP_TIMEOUT = getattr(settings, "REPO_CONNECTOR_HTTP_TIMEOUT", (5, 30))
         _globals_initialized = True
 
 def get_requirements():
@@ -95,13 +76,13 @@ def get_github_contents(repo):
             timeout=HTTP_TIMEOUT,
         )
     except requests.Timeout as e:
-        _on_error(
+        add_error_notification(
             f"GitHub connector: timeout calling GitHub API: {api_url} "
             f"(repo: {repo.url}, timeout={HTTP_TIMEOUT}): {e}"
         )
         return []
     except requests.RequestException as e:
-        _on_error(
+        add_error_notification(
             f"GitHub connector: failed to call GitHub API: {api_url} "
             f"(repo: {repo.url}, timeout={HTTP_TIMEOUT}): {e}"
         )
@@ -122,9 +103,8 @@ def get_github_contents(repo):
     details = (response.text or "").strip().replace("\n", " ")
     if len(details) > 300:
         details = details[:300] + "..."
-    _on_error(
+    add_error_notification(
         f"GitHub connector: error (status code {response.status_code}) calling {api_url} "
         f"(repo: {repo.url}). Response: {details}"
     )
     return []
-    
