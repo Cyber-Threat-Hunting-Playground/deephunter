@@ -135,6 +135,7 @@ class Analytic(models.Model):
     notes = models.TextField(blank=True, help_text="Threat hunting notes, Markdown syntax")
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, editable=False)
     pub_date = models.DateTimeField(auto_now_add=True)
+    update_date = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='DRAFT')
     confidence = models.IntegerField(choices=CONFIDENCE_CHOICES, default=1)
     relevance = models.IntegerField(choices=RELEVANCE_CHOICES, default=1)

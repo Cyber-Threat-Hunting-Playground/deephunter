@@ -113,9 +113,9 @@ class AnalyticListSerializer(serializers.ModelSerializer):
             'weighted_relevance', 'category', 'category_name',
             'connector', 'connector_name', 'repo', 'repo_name',
             'created_by', 'created_by_username',
-            'run_daily', 'create_rule', 'pub_date',
+            'run_daily', 'create_rule', 'pub_date', 'update_date',
         ]
-        read_only_fields = ['pub_date', 'weighted_relevance', 'created_by', 'repo']
+        read_only_fields = ['pub_date', 'update_date', 'weighted_relevance', 'created_by', 'repo']
 
 
 class AnalyticSerializer(serializers.ModelSerializer):
@@ -162,7 +162,7 @@ class AnalyticSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'description', 'notes',
             'repo', 'repo_name', 'created_by', 'created_by_username',
-            'pub_date', 'status', 'confidence', 'relevance', 'weighted_relevance',
+            'pub_date', 'update_date', 'status', 'confidence', 'relevance', 'weighted_relevance',
             'category', 'category_name', 'connector', 'connector_name',
             'query', 'columns', 'dynamic_query',
             'tags', 'tags_detail',
@@ -176,7 +176,7 @@ class AnalyticSerializer(serializers.ModelSerializer):
             'anomaly_threshold_count', 'anomaly_threshold_endpoints',
             'meta',
         ]
-        read_only_fields = ['pub_date', 'weighted_relevance', 'created_by', 'repo']
+        read_only_fields = ['pub_date', 'update_date', 'weighted_relevance', 'created_by', 'repo']
 
 
 # ── Campaigns ──────────────────────────────────────────────────────────────
