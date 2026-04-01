@@ -119,6 +119,8 @@ INSTALLED_APPS = [
     'dbbackup',
     'django_markup',
     'simple_history',
+    'rest_framework',
+    'drf_spectacular',
     
     # DeepHunter apps
     'qm',
@@ -235,3 +237,55 @@ AUTO_LOGOUT = {
 
 CELERY_BROKER_URL = "redis://localhost:6379"
 CELERY_RESULT_BACKEND = "redis://localhost:6379"
+
+# Django REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'deephunter.api_auth.ApiKeyAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'deephunter.api_auth.ApiKeyPermission',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 50,
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'DeepHunter API',
+    'DESCRIPTION': 'REST API for managing all DeepHunter resources: analytics, campaigns, connectors, repositories, notifications, and configuration.',
+    'VERSION': '2.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'TAGS': [
+        {'name': 'Analytics', 'description': 'Threat hunting analytics management'},
+        {'name': 'Analytics Meta', 'description': 'Analytics metadata and error tracking'},
+        {'name': 'Categories', 'description': 'Analytic categories'},
+        {'name': 'MITRE Tactics', 'description': 'MITRE ATT&CK tactics'},
+        {'name': 'MITRE Techniques', 'description': 'MITRE ATT&CK techniques'},
+        {'name': 'Threats', 'description': 'Threat names and software'},
+        {'name': 'Threat Actors', 'description': 'Threat actor groups'},
+        {'name': 'Countries', 'description': 'Country reference data'},
+        {'name': 'Target OS', 'description': 'Target operating systems'},
+        {'name': 'Vulnerabilities', 'description': 'CVE vulnerabilities'},
+        {'name': 'Tags', 'description': 'Analytic tags'},
+        {'name': 'Campaigns', 'description': 'Threat hunting campaigns'},
+        {'name': 'Campaign Completions', 'description': 'Campaign completion tracking per connector'},
+        {'name': 'Snapshots', 'description': 'Campaign execution snapshots'},
+        {'name': 'Endpoints', 'description': 'Detected endpoints'},
+        {'name': 'Reviews', 'description': 'Analytic review workflow'},
+        {'name': 'Saved Searches', 'description': 'Saved search queries'},
+        {'name': 'Tasks', 'description': 'Background task status'},
+        {'name': 'Connectors', 'description': 'Data source connectors'},
+        {'name': 'Connector Config', 'description': 'Connector configuration keys'},
+        {'name': 'Repos', 'description': 'Analytic repositories'},
+        {'name': 'Repo Analytics', 'description': 'Analytics discovered in repositories'},
+        {'name': 'Notifications', 'description': 'System notifications'},
+        {'name': 'User Notifications', 'description': 'Per-user notification status'},
+        {'name': 'Modules', 'description': 'DeepHunter modules'},
+        {'name': 'Module Permissions', 'description': 'Module permission definitions'},
+        {'name': 'API Keys', 'description': 'API key management'},
+        {'name': 'Users', 'description': 'User management'},
+    ],
+}
