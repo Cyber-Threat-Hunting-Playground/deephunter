@@ -5,7 +5,6 @@ VirusTotal connector
 from connectors.utils import get_connector_conf, is_valid_md5, is_valid_sha1, is_valid_sha256, is_valid_ip
 import requests
 from django.conf import settings
-import vt
 from notifications.utils import add_error_notification
 
 
@@ -34,11 +33,7 @@ def init_globals():
         _globals_initialized = True
 
 def get_requirements():
-    """
-    Return the required modules for the connector.
-    """
-    init_globals()
-    return ['requests', 'vt']
+    return ['requests', 'vt-py']
 
 def check_hash(hash):
     """
@@ -50,6 +45,7 @@ def check_hash(hash):
     init_globals()
     if is_valid_md5(hash) or is_valid_sha1(hash) or is_valid_sha256(hash):        
 
+        import vt
         client = vt.Client(
             API_KEY,
             proxy=PROXY['https']

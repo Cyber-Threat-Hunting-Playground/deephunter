@@ -19,9 +19,6 @@ To do
 - get_threats() not implemented yet.
 """
 
-from azure.identity import ClientSecretCredential
-from azure.monitor.query import LogsQueryClient
-from azure.monitor.query import LogsQueryStatus
 from connectors.utils import get_connector_conf, gzip_base64_urlencode, manage_analytic_error
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote, unquote
@@ -112,11 +109,7 @@ def init_globals():
 
 
 def get_requirements():
-    """
-    Return the required modules for the connector.
-    """
-    init_globals()
-    return ['azure.identity', 'azure.monitor.query']
+    return ['azure-identity', 'azure-monitor-query']
 
 def query_language():
     """
@@ -126,6 +119,8 @@ def query_language():
     return QUERY_LANGUAGE
 
 def authenticate():
+    from azure.identity import ClientSecretCredential
+    from azure.monitor.query import LogsQueryClient
     init_globals()
     credential = ClientSecretCredential(TENANT_ID, CLIENT_ID, CLIENT_SECRET)
     client = LogsQueryClient(credential)
@@ -182,6 +177,7 @@ def query(analytic, from_date=None, to_date=None, debug=None):
         return "ERROR"
 
     # Handle response
+    from azure.monitor.query import LogsQueryStatus
     if response.status == LogsQueryStatus.SUCCESS:
         res = []
         for table in response.tables:

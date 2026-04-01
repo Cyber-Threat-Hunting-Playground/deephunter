@@ -11,7 +11,6 @@ Description
 This plugin integrates OpenAI's ChatGPT to suggest MITRE techniques based on a given query.
 """
 
-from openai import OpenAI
 from django.conf import settings
 from connectors.utils import get_connector_conf
 import re
@@ -57,13 +56,10 @@ def init_globals():
 
 
 def get_requirements():
-    """
-    Return the required modules for the connector.
-    """
-    init_globals()
     return ['openai']
 
 def get_mitre_techniques_from_query(query):
+    from openai import OpenAI
     init_globals()
 
     client = OpenAI(api_key=API_KEY)
@@ -84,6 +80,7 @@ def get_mitre_techniques_from_query(query):
     return list(set(mitre_ttps))
 
 def write_query_with_ai(prompt):
+    from openai import OpenAI
     init_globals()
 
     client = OpenAI(api_key=API_KEY)

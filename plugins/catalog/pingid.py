@@ -10,7 +10,6 @@ Description
 This plugin integrates PingID.
 """
 
-from authlib.integrations.django_client import OAuth
 from django.conf import settings
 from connectors.utils import get_connector_conf
 import ast
@@ -97,6 +96,7 @@ def init_globals():
     global AUTH_TOKEN_MAPPING_LAST_NAME, AUTH_TOKEN_MAPPING_EMAIL, AUTH_TOKEN_MAPPING_GROUPS, USER_GROUPS_MEMBERSHIP
     global _globals_initialized
     if not _globals_initialized:
+        from authlib.integrations.django_client import OAuth
         DEBUG = False
         PROXY = settings.PROXY
         CLIENT_ID = get_connector_conf('pingid', 'CLIENT_ID')
@@ -120,11 +120,7 @@ def init_globals():
         _globals_initialized = True
 
 def get_requirements():
-    """
-    Return the required modules for the connector.
-    """
-    init_globals()
-    return ['authlib']
+    return ['Authlib']
 
 def sso(request, redirect_uri):
     init_globals()

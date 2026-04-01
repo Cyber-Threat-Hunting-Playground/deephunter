@@ -7,8 +7,6 @@ pip install ldap3
 """
 
 from connectors.utils import get_connector_conf
-from ldap3 import Server, Connection, ALL
-from ldap3.core.exceptions import LDAPBindError, LDAPException
 from notifications.utils import add_error_notification
 
 
@@ -109,10 +107,6 @@ def init_globals():
         _globals_initialized = True
 
 def get_requirements():
-    """
-    Return the required modules for the connector.
-    """
-    init_globals()
     return ['ldap3']
 
 def ldap_search(username):
@@ -122,6 +116,8 @@ def ldap_search(username):
     :param username: The username to search for in the LDAP directory.
     :return: An LDAP entry if found, otherwise None.
     """
+    from ldap3 import Server, Connection, ALL
+    from ldap3.core.exceptions import LDAPBindError, LDAPException
     init_globals()
     try:
         server = Server(LDAP_SERVER, port=LDAP_PORT, use_ssl=LDAP_SSL, get_info=ALL)

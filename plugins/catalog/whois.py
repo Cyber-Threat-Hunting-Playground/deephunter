@@ -5,7 +5,6 @@ WHOIS connector
 from connectors.utils import get_connector_conf, is_valid_ip
 import requests
 from django.conf import settings
-from bs4 import BeautifulSoup
 
 
 def get_connector_metadata():
@@ -26,10 +25,6 @@ def init_globals():
         _globals_initialized = True
 
 def get_requirements():
-    """
-    Return the required modules for the connector.
-    """
-    init_globals()
     return ['requests', 'beautifulsoup4']
 
 def whois(ip):
@@ -39,6 +34,7 @@ def whois(ip):
     :param ip: The IP address to look up.
     :return: WHOIS data as a string or an error message
     """
+    from bs4 import BeautifulSoup
     init_globals()
     if is_valid_ip(ip):
         response = requests.get(

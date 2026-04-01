@@ -13,7 +13,6 @@ Unlike the standard OpenAI plugin, this one lets you configure a custom BASE_URL
 so requests are sent to your own server instead of the OpenAI cloud.
 """
 
-from openai import OpenAI
 from django.conf import settings
 from connectors.utils import get_connector_conf
 import re
@@ -66,13 +65,10 @@ def init_globals():
 
 
 def get_requirements():
-    """
-    Return the required modules for the connector.
-    """
-    init_globals()
     return ['openai']
 
 def get_mitre_techniques_from_query(query):
+    from openai import OpenAI
     init_globals()
 
     client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
@@ -93,6 +89,7 @@ def get_mitre_techniques_from_query(query):
     return list(set(mitre_ttps))
 
 def write_query_with_ai(prompt):
+    from openai import OpenAI
     init_globals()
 
     client = OpenAI(api_key=API_KEY, base_url=BASE_URL)

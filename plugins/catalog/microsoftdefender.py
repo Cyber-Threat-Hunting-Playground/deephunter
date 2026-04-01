@@ -34,15 +34,13 @@ To do
 """
 
 import requests
-from msal import ConfidentialClientApplication
 from connectors.utils import get_connector_conf, gzip_base64_urlencode, manage_analytic_error
 from django.conf import settings
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from django.utils import timezone
 from urllib.parse import quote, unquote
 import re
 from notifications.utils import add_debug_notification
-from datetime import date
 
 
 def get_connector_metadata():
@@ -114,10 +112,6 @@ def init_globals():
 
 
 def get_requirements():
-    """
-    Return the required modules for the connector.
-    """
-    init_globals()
     return ['requests', 'msal']
 
 def query_language():
@@ -132,6 +126,7 @@ def authenticate():
     Authenticate and get token
     :return: access token
     """
+    from msal import ConfidentialClientApplication
     init_globals()
     app = ConfidentialClientApplication(CLIENT_ID, authority=AUTHORITY, client_credential=CLIENT_SECRET)
     token_response = app.acquire_token_for_client(scopes=SCOPE)

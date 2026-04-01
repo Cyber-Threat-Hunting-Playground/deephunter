@@ -11,8 +11,6 @@ Description
 This plugin integrates Google's Gemini AI to suggest MITRE techniques based on a given query.
 """
 
-from google import genai
-from google.genai.types import GenerateContentConfig
 from django.conf import settings
 from connectors.utils import get_connector_conf
 import re
@@ -84,13 +82,11 @@ def init_globals():
         _globals_initialized = True
 
 def get_requirements():
-    """
-    Return the required modules for the connector.
-    """
-    init_globals()
     return ['google-genai']
 
 def get_mitre_techniques_from_query(query):
+    from google import genai
+    from google.genai.types import GenerateContentConfig
     init_globals()
 
     client = genai.Client(api_key=API_KEY)
@@ -120,6 +116,8 @@ def get_mitre_techniques_from_query(query):
     return list(set(mitre_ttps))
 
 def write_query_with_ai(prompt):
+    from google import genai
+    from google.genai.types import GenerateContentConfig
     init_globals()
 
     client = genai.Client(api_key=API_KEY)

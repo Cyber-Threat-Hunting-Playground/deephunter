@@ -5,7 +5,6 @@ LOLDrivers connector
 from connectors.utils import get_connector_conf
 import requests
 from django.conf import settings
-from bs4 import BeautifulSoup
 
 
 def get_connector_metadata():
@@ -25,10 +24,6 @@ def init_globals():
         _globals_initialized = True
 
 def get_requirements():
-    """
-    Return the required modules for the connector.
-    """
-    init_globals()
     return ['requests', 'beautifulsoup4']
 
 def get_sha256_hashes():
@@ -36,6 +31,7 @@ def get_sha256_hashes():
     Fetches SHA256 hashes of LOLDrivers from the website.
     :return: A list of SHA256 hashes found on the LOLDrivers website.
     """
+    from bs4 import BeautifulSoup
     init_globals()
     lol_hashes = []
     response = requests.get(
