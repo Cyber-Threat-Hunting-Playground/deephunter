@@ -24,6 +24,16 @@ for loader, module_name, is_pkg in pkgutil.iter_modules(plugins.__path__):
     module = importlib.import_module(f"plugins.{module_name}")
     all_connectors[module_name] = module
 
+# Repo-domain plugins are framework-agnostic; inject DeepHunter config here.
+for _name in ('github', 'bitbucket'):
+    _mod = all_connectors.get(_name)
+    if _mod and hasattr(_mod, 'init_globals'):
+        _mod.init_globals(
+            proxy=settings.PROXY,
+            timeout=getattr(settings, "REPO_CONNECTOR_HTTP_TIMEOUT", (5, 30)),
+            on_error=add_error_notification,
+        )
+
 PROXY = settings.PROXY
 REPO_IMPORT_HTTP_TIMEOUT = getattr(settings, "REPO_IMPORT_HTTP_TIMEOUT", (5, 60))
 REPO_IMPORT_CREATE_FIELD_IF_NOT_EXIST = settings.REPO_IMPORT_CREATE_FIELD_IF_NOT_EXIST
