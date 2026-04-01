@@ -57,6 +57,7 @@ Plugins
    microsoftdefender
    microsoftsentinel
    openai
+   openai_custom
    pingid
    sentinelone
    virustotal
