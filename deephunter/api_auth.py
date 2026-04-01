@@ -41,6 +41,9 @@ class ApiKeyAuthentication(authentication.BaseAuthentication):
         except ApiKey.DoesNotExist:
             raise AuthenticationFailed('Invalid API key.')
 
+        if key_obj.is_expired:
+            raise AuthenticationFailed('API key has expired.')
+
         return (ApiKeyUser(key_obj), key_obj)
 
     def authenticate_header(self, request):

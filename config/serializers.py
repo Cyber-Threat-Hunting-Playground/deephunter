@@ -19,6 +19,8 @@ class ModulePermissionSerializer(serializers.ModelSerializer):
 
 
 class ApiKeySerializer(serializers.ModelSerializer):
+    is_expired = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = ApiKey
         fields = '__all__'

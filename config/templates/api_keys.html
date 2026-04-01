@@ -17,6 +17,14 @@
                     <option value="WRITE">Read and Write</option>
                 </select>
             </div>
+            <div style="margin-bottom: 10px;">
+                <label for="id_expiration">Expiration:</label>
+                <select id="id_expiration" name="expiration">
+                    {% for value, label in expiration_choices %}
+                        <option value="{{ value }}" {% if value == "90d" %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <button type="submit" class="button">Create Key</button>
         </form>
     </div>
@@ -30,16 +38,28 @@
                     <th>Type</th>
                     <th>Key</th>
                     <th>Created At</th>
+                    <th>Expires</th>
                     <th>Action</th>
                 </tr>
             </thead>
             <tbody>
                 {% for key in api_keys %}
-                <tr>
+                <tr{% if key.is_expired %} style="opacity: 0.5;"{% endif %}>
                     <td>{{ key.name }}</td>
                     <td>{{ key.get_key_type_display }}</td>
                     <td><code style="background-color: #f4f4f4; padding: 2px 5px; border-radius: 3px; font-family: monospace;">{{ key.key }}</code></td>
                     <td>{{ key.created_at|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        {% if key.expires_at %}
+                            {% if key.is_expired %}
+                                <span style="color: #dc3545; font-weight: bold;">Expired ({{ key.expires_at|date:"Y-m-d H:i" }})</span>
+                            {% else %}
+                                {{ key.expires_at|date:"Y-m-d H:i" }}
+                            {% endif %}
+                        {% else %}
+                            <span style="color: #6c757d;">Never</span>
+                        {% endif %}
+                    </td>
                     <td>
                         <button class="buttonred" 
                                 hx-post="/config/delete-api-key/{{ key.id }}/" 

@@ -109,15 +109,40 @@ def stop_running_task(request, task_id):
         return HttpResponse(f'Error terminating Celery Task: {e}')
 
 import secrets
+from datetime import timedelta
 from django.views.decorators.http import require_POST
-from django.utils.crypto import get_random_string
+from django.utils import timezone
 from .models import ApiKey
+
+EXPIRATION_CHOICES = [
+    ('1d',   '1 day'),
+    ('7d',   '7 days'),
+    ('30d',  '30 days'),
+    ('90d',  '90 days'),
+    ('180d', '180 days'),
+    ('1y',   '1 year'),
+    ('2y',   '2 years'),
+    ('never', 'Never'),
+]
+
+EXPIRATION_DELTAS = {
+    '1d':   timedelta(days=1),
+    '7d':   timedelta(days=7),
+    '30d':  timedelta(days=30),
+    '90d':  timedelta(days=90),
+    '180d': timedelta(days=180),
+    '1y':   timedelta(days=365),
+    '2y':   timedelta(days=730),
+}
 
 @login_required
 @permission_required('config.view_admin', raise_exception=True)
 def api_keys(request):
     keys = ApiKey.objects.all()
-    return render(request, 'api_keys.html', {'api_keys': keys})
+    return render(request, 'api_keys.html', {
+        'api_keys': keys,
+        'expiration_choices': EXPIRATION_CHOICES,
+    })
 
 @login_required
 @permission_required('config.view_admin', raise_exception=True)
@@ -125,16 +150,23 @@ def api_keys(request):
 def generate_api_key(request):
     name = request.POST.get('name', '').strip()
     key_type = request.POST.get('key_type', 'READ')
+    expiration = request.POST.get('expiration', 'never')
+
     if name:
         new_key = secrets.token_urlsafe(32)
-        ApiKey.objects.create(name=name, key=new_key, key_type=key_type)
+        expires_at = None
+        if expiration in EXPIRATION_DELTAS:
+            expires_at = timezone.now() + EXPIRATION_DELTAS[expiration]
+        ApiKey.objects.create(name=name, key=new_key, key_type=key_type, expires_at=expires_at)
         add_success_notification(f"Created new API key: {name}")
     else:
         add_error_notification("A name is required for the new API key.")
     
-    # Return the updated list
     keys = ApiKey.objects.all()
-    return render(request, 'api_keys.html', {'api_keys': keys})
+    return render(request, 'api_keys.html', {
+        'api_keys': keys,
+        'expiration_choices': EXPIRATION_CHOICES,
+    })
 
 @login_required
 @permission_required('config.view_admin', raise_exception=True)
@@ -145,6 +177,8 @@ def delete_api_key(request, pk):
     key.delete()
     add_success_notification(f"Deleted API key: {name}")
     
-    # Return the updated list
     keys = ApiKey.objects.all()
-    return render(request, 'api_keys.html', {'api_keys': keys})
+    return render(request, 'api_keys.html', {
+        'api_keys': keys,
+        'expiration_choices': EXPIRATION_CHOICES,
+    })
