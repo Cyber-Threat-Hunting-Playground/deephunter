@@ -3,6 +3,7 @@ from django.urls import include, path, re_path
 from django.views.generic.base import RedirectView
 from . import views
 from .api_router import router
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 
 admin.site.login_template = 'custom_admin/login.html'
 
@@ -29,4 +30,9 @@ urlpatterns = [
     path('api/v1/connectors/', include('connectors.api_urls')),
     # REST API v1 — DRF router (browsable root + ViewSet endpoints)
     path('api/v1/', include(router.urls)),
+
+    # OpenAPI schema & interactive docs
+    path('api/v1/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/v1/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/v1/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
