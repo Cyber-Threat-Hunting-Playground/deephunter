@@ -2,7 +2,7 @@ import json
 from django.http import JsonResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
-from config.decorators import require_api_key
+from config.decorators import require_api_key, verify_api_key
 from .models import Analytic, Category, MitreTactic, MitreTechnique, Campaign, Snapshot
 
 def serialize_category(category):
@@ -40,16 +40,24 @@ def get_analytics(request):
     
     return JsonResponse({'data': data})
 
-@require_api_key('READ')
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "DELETE"])
 def get_analytic(request, pk):
     """
-    Return details of a specific analytic.
+    GET: Return details of a specific analytic.
+    DELETE: Delete a specific analytic (requires WRITE key).
     """
+    perm = 'WRITE' if request.method == 'DELETE' else 'READ'
+    error = verify_api_key(request, perm)
+    if error:
+        return error
+
     analytic = get_object_or_404(Analytic.objects.select_related('category', 'connector', 'repo'), pk=pk)
-    data = serialize_analytic(analytic)
-    
-    return JsonResponse({'data': data})
+
+    if request.method == 'DELETE':
+        analytic.delete()
+        return JsonResponse({'status': 'deleted'}, status=200)
+
+    return JsonResponse({'data': serialize_analytic(analytic)})
 
 def serialize_category(category):
     return {
@@ -67,11 +75,20 @@ def get_categories(request):
     data = [serialize_category(c) for c in categories]
     return JsonResponse({'data': data})
 
-@require_api_key('READ')
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "DELETE"])
 def get_category(request, pk):
-    """Return details of a specific category."""
+    """GET: Return details of a specific category. DELETE: Remove it (WRITE key)."""
+    perm = 'WRITE' if request.method == 'DELETE' else 'READ'
+    error = verify_api_key(request, perm)
+    if error:
+        return error
+
     category = get_object_or_404(Category, pk=pk)
+
+    if request.method == 'DELETE':
+        category.delete()
+        return JsonResponse({'status': 'deleted'}, status=200)
+
     return JsonResponse({'data': serialize_category(category)})
 
 def serialize_tactic(tactic):
@@ -91,11 +108,20 @@ def get_tactics(request):
     data = [serialize_tactic(t) for t in tactics]
     return JsonResponse({'data': data})
 
-@require_api_key('READ')
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "DELETE"])
 def get_tactic(request, pk):
-    """Return details of a specific tactic."""
+    """GET: Return details of a specific tactic. DELETE: Remove it (WRITE key)."""
+    perm = 'WRITE' if request.method == 'DELETE' else 'READ'
+    error = verify_api_key(request, perm)
+    if error:
+        return error
+
     tactic = get_object_or_404(MitreTactic, pk=pk)
+
+    if request.method == 'DELETE':
+        tactic.delete()
+        return JsonResponse({'status': 'deleted'}, status=200)
+
     return JsonResponse({'data': serialize_tactic(tactic)})
 
 def serialize_technique(technique):
@@ -116,11 +142,20 @@ def get_techniques(request):
     data = [serialize_technique(t) for t in techniques]
     return JsonResponse({'data': data})
 
-@require_api_key('READ')
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "DELETE"])
 def get_technique(request, pk):
-    """Return details of a specific technique."""
+    """GET: Return details of a specific technique. DELETE: Remove it (WRITE key)."""
+    perm = 'WRITE' if request.method == 'DELETE' else 'READ'
+    error = verify_api_key(request, perm)
+    if error:
+        return error
+
     technique = get_object_or_404(MitreTechnique, pk=pk)
+
+    if request.method == 'DELETE':
+        technique.delete()
+        return JsonResponse({'status': 'deleted'}, status=200)
+
     return JsonResponse({'data': serialize_technique(technique)})
 
 def serialize_campaign(campaign):
@@ -143,11 +178,20 @@ def get_campaigns(request):
     data = [serialize_campaign(c) for c in campaigns]
     return JsonResponse({'data': data})
 
-@require_api_key('READ')
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "DELETE"])
 def get_campaign_detail(request, pk):
-    """Return details of a specific campaign."""
+    """GET: Return details of a specific campaign. DELETE: Remove it (WRITE key)."""
+    perm = 'WRITE' if request.method == 'DELETE' else 'READ'
+    error = verify_api_key(request, perm)
+    if error:
+        return error
+
     campaign = get_object_or_404(Campaign, pk=pk)
+
+    if request.method == 'DELETE':
+        campaign.delete()
+        return JsonResponse({'status': 'deleted'}, status=200)
+
     return JsonResponse({'data': serialize_campaign(campaign)})
 
 def serialize_snapshot(snapshot):
@@ -171,9 +215,18 @@ def get_snapshots(request):
     data = [serialize_snapshot(s) for s in snapshots]
     return JsonResponse({'data': data})
 
-@require_api_key('READ')
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "DELETE"])
 def get_snapshot_detail(request, pk):
-    """Return details of a specific snapshot."""
+    """GET: Return details of a specific snapshot. DELETE: Remove it (WRITE key)."""
+    perm = 'WRITE' if request.method == 'DELETE' else 'READ'
+    error = verify_api_key(request, perm)
+    if error:
+        return error
+
     snapshot = get_object_or_404(Snapshot, pk=pk)
+
+    if request.method == 'DELETE':
+        snapshot.delete()
+        return JsonResponse({'status': 'deleted'}, status=200)
+
     return JsonResponse({'data': serialize_snapshot(snapshot)})
