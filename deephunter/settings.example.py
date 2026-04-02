@@ -288,4 +288,23 @@ SPECTACULAR_SETTINGS = {
         {'name': 'API Keys', 'description': 'API key management'},
         {'name': 'Users', 'description': 'User management'},
     ],
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'BearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'description': 'Paste your DeepHunter API key (Config > API Keys)',
+            },
+            'ApiKeyHeader': {
+                'type': 'apiKey',
+                'in': 'header',
+                'name': 'X-API-Key',
+                'description': 'Paste your DeepHunter API key (Config > API Keys)',
+            },
+        },
+    },
+    'SECURITY': [
+        {'BearerAuth': []},
+        {'ApiKeyHeader': []},
+    ],
 }

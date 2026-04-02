@@ -5,8 +5,15 @@ from .models import ApiKey
 def verify_api_key(request, required_type='READ'):
     """
     Verify the API key from request headers and check permission level.
+    Also allows session-authenticated Django users (read for any authenticated
+    user, write only for staff), mirroring ApiKeyPermission behaviour.
     Returns None on success, or a JsonResponse with an error on failure.
     """
+    user = getattr(request, 'user', None)
+    if user is not None and hasattr(user, 'is_staff') and user.is_authenticated:
+        if required_type != 'WRITE' or user.is_staff:
+            return None
+
     auth_header = request.headers.get('Authorization', '')
     api_key = request.headers.get('X-API-Key', '')
 
