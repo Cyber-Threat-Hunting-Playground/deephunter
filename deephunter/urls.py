@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 from django.views.generic.base import RedirectView
 from . import views
+from .api_router import router
 
 admin.site.login_template = 'custom_admin/login.html'
 
@@ -22,8 +23,10 @@ urlpatterns = [
     path('dashboard/', include('dashboard.urls')),
     path('config/', include('config.urls')),
 
-    # REST API v1
+    # REST API v1 — function-based views (matched first for overlapping paths)
     path('api/v1/', include('qm.api_urls')),
     path('api/v1/repos/', include('repos.api_urls')),
     path('api/v1/connectors/', include('connectors.api_urls')),
+    # REST API v1 — DRF router (browsable root + ViewSet endpoints)
+    path('api/v1/', include(router.urls)),
 ]

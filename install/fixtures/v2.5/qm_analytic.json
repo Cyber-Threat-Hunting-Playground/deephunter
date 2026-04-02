@@ -13,7 +13,6 @@
             "confidence": 2,
             "relevance": 3,
             "category": 2,
-            "weighted_relevance": 1.5,
             "connector": 1,
             "query": "endpoint.os = 'windows'\r\nand event.type = 'IP Connect'\r\nand src.process.name matches 'psexec\\\\.exe'",
             "columns": "| columns event.time, event.type, site.name, agent.uuid, src.process.storyline.id, src.process.user, src.process.uid, src.process.cmdline, src.ip.address, src.port.number, dst.ip.address, dst.port.number, src.process.parent.cmdline, tgt.process.cmdline",
@@ -25,9 +24,6 @@
             "dynamic_query": false,
             "anomaly_threshold_count": 2,
             "anomaly_threshold_endpoints": 2,
-            "maxhosts_count": 0,
-            "query_error": false,
-            "query_error_message": "",
             "tags": [
                 1,
                 4
@@ -58,7 +54,6 @@
             "confidence": 4,
             "relevance": 1,
             "category": 2,
-            "weighted_relevance": 1,
             "connector": 1,
             "query": "endpoint.os = 'windows'\r\nand src.process.name matches 'wsl\\\\.exe' \r\nand src.process.parent.name matches 'kali'",
             "columns": "| columns event.time, event.type, site.name, agent.uuid, src.process.user, src.process.storyline.id, src.process.uid, src.process.cmdline, src.process.parent.cmdline",
@@ -70,9 +65,6 @@
             "dynamic_query": false,
             "anomaly_threshold_count": 1,
             "anomaly_threshold_endpoints": 1,
-            "maxhosts_count": 0,
-            "query_error": false,
-            "query_error_message": "",
             "tags": [
                 1
             ],
@@ -101,7 +93,6 @@
             "confidence": 1,
             "relevance": 2,
             "category": null,
-            "weighted_relevance": 0.5,
             "connector": 1,
             "query": "endpoint.os = 'windows' \r\nand event.type = 'File Creation' \r\nand tgt.file.path matches '\\\\\\\\Users\\\\\\\\.*?\\\\\\\\AppData\\\\\\\\Local\\\\\\\\Temp\\\\\\\\Temp1_'",
             "columns": "| columns event.time, event.type, endpoint.name, src.process.user, src.process.name, src.process.image.sha1, src.process.cmdline, src.process.parent.name, src.process.parent.image.sha1, src.process.parent.cmdline, tgt.file.path, tgt.process.image.sha1, tgt.file.oldPath, tgt.process.image.path, tgt.process.cmdline, tgt.file.size, tgt.file.type, src.process.storyline.id",
@@ -113,9 +104,6 @@
             "dynamic_query": false,
             "anomaly_threshold_count": 1,
             "anomaly_threshold_endpoints": 1,
-            "maxhosts_count": 0,
-            "query_error": false,
-            "query_error_message": "",
             "tags": [],
             "mitre_techniques": [
                 114
@@ -144,7 +132,6 @@
             "confidence": 2,
             "relevance": 4,
             "category": 2,
-            "weighted_relevance": 2,
             "connector": 5,
             "query": "AkamaiSIEMEvent\r\n| where HttpRequestMethod in (\"CONNECT\", \"TRACK\", \"MOVE\", \"COPY\", \"MKCOL\", \"LOCK\", \"UNLOCK\", \"SEARCH\")\r\n| project Computer = DstDvcHostname",
             "columns": "//| summarize count() by HttpRequestMethod",
@@ -156,9 +143,6 @@
             "dynamic_query": false,
             "anomaly_threshold_count": 2,
             "anomaly_threshold_endpoints": 2,
-            "maxhosts_count": 0,
-            "query_error": false,
-            "query_error_message": "",
             "tags": [
                 17
             ],
