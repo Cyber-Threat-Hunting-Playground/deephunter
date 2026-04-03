@@ -1,5 +1,7 @@
 # DeepHunter
 
+[![CodeQL](https://github.com/Cyber-Threat-Hunting-Playground/deephunter/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/Cyber-Threat-Hunting-Playground/deephunter/actions/workflows/github-code-scanning/codeql)
+
 DeepHunter is a Threat Hunting platform that features:
 
 - Repository for your threat hunting analytics shown in a sortable table.
