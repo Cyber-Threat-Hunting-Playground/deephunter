@@ -8,7 +8,7 @@ from repos.models import Repo
 from .forms import RepoForm
 from repos.tasks import import_repo_task
 import requests
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 import base64
 from notifications.utils import add_debug_notification, add_error_notification, add_success_notification, add_info_notification
 from celery import current_app
@@ -53,13 +53,14 @@ def get_repo_import_info(request, repo_id):
 def import_repo_select_analytics(request, repo_id):
     repo = get_object_or_404(Repo, pk=repo_id)
     contents = []
-    if "github.com" in repo.url:
+    host = urlparse(repo.url).hostname or ""
+    if host == "github.com" or host.endswith(".github.com"):
         connector = all_connectors.get('github')
         if connector:
             contents = connector.get_github_contents(repo)
         else:
             add_error_notification(f"GitHub plugin is not installed. Cannot import from {repo.url}")
-    elif "bitbucket.org" in repo.url:
+    elif host == "bitbucket.org" or host.endswith(".bitbucket.org"):
         connector = all_connectors.get('bitbucket')
         if connector:
             contents = connector.get_bitbucket_contents(repo)
