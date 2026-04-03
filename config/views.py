@@ -172,9 +172,6 @@ def generate_api_key(request):
 @permission_required('config.view_admin', raise_exception=True)
 @require_POST
 def delete_api_key(request, pk):
-    # #region agent log
-    import json, time, os; _dl=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'debug-77d9df.log'); open(_dl,'a').write(json.dumps({"sessionId":"77d9df","location":"config/views.py:delete_api_key","message":"delete_api_key view reached","data":{"pk":pk,"method":request.method,"user":str(request.user),"has_perm":request.user.has_perm('config.view_admin'),"content_type":request.content_type,"csrf_cookie":bool(request.META.get('CSRF_COOKIE',''))},"timestamp":int(time.time()*1000),"hypothesisId":"B"})+'\n')
-    # #endregion
     key = get_object_or_404(ApiKey, pk=pk)
     name = key.name
     key.delete()
