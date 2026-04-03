@@ -10,6 +10,8 @@ trap 'echo "ERROR: Script failed at line $LINENO. Check /tmp/install.log."; exit
 export APP_PATH="/data/deephunter"
 export VENV_PATH="/data/venv"
 export TEMP_FOLDER="/data/tmp"
+export GITHUB_REPO="${GITHUB_REPO:-sebastiendamaye/deephunter}"
+export DEEPHUNTER_VERSION="${DEEPHUNTER_VERSION:-2.5}"
 
 ### Don't modify anything below this line unless you know what you're doing
 #
@@ -101,8 +103,8 @@ echo -e "[\033[32mdone\033[0m]" | tee -a /tmp/install.log
 #
 echo -n -e "[\033[90mINFO\033[0m] DOWNLOADING DEEPHUNTER .......................... " | tee -a /tmp/install.log
 cd /tmp/
-wget -q https://github.com/sebastiendamaye/deephunter/archive/refs/tags/v2.5.tar.gz >> /tmp/install.log 2>&1
-tar xzf v2.5.tar.gz -C "${APP_PATH}" --strip-components=1 >> /tmp/install.log 2>&1
+wget -q "https://github.com/${GITHUB_REPO}/archive/refs/tags/v${DEEPHUNTER_VERSION}.tar.gz" >> /tmp/install.log 2>&1
+tar xzf "v${DEEPHUNTER_VERSION}.tar.gz" -C "${APP_PATH}" --strip-components=1 >> /tmp/install.log 2>&1
 echo -e "[\033[32mdone\033[0m]" | tee -a /tmp/install.log
 
 ############ 
@@ -158,6 +160,9 @@ sed -i "s|^USER_GROUP = .*|USER_GROUP = \"$(id -nu):$(id -ng)\"|" settings.py
 
 # MySQL password
 sed -i "s|'PASSWORD': '.*'|'PASSWORD': '$MYSQL_DEEPHUNTER_PWD'|" settings.py
+
+# GitHub repository
+sed -i "s|^GITHUB_REPO = .*|GITHUB_REPO = \"${GITHUB_REPO}\"|" settings.py
 
 # Set proxy to empty
 sed -i "s|'http://proxy:port'|''|g" settings.py

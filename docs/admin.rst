@@ -30,7 +30,7 @@ The database model
   * **Threat names**: List of threat names that threat hunting analytics can be linked to.
   * **Vulnerabilities**: List of vulnerabilities (CVE) that threat hunting analytics can be linked to.
 
-The detailed model is available `here <https://github.com/sebastiendamaye/deephunter/blob/main/qm/models.py>`_.
+The detailed model is available `here <https://github.com/sebastiendamaye/deephunter/blob/main/qm/models.py>`_ (adjust the URL if running a fork).
 
 Logout
 ******

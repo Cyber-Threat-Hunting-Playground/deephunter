@@ -23,7 +23,7 @@ check_empty() {
 self_update() {
 
 	echo -n -e "[\033[90mINFO\033[0m] CHECKING SCRIPT VERSION ......................... " | tee -a /tmp/upgrade.log
-	REMOTE_SCRIPT="https://raw.githubusercontent.com/sebastiendamaye/deephunter/main/qm/scripts/upgrade.sh"
+	REMOTE_SCRIPT="https://raw.githubusercontent.com/${GITHUB_REPO}/main/qm/scripts/upgrade.sh"
 
 	LOCAL_HASH=$(sha1sum $0 | awk '{print $1}')
 	REMOTE_HASH=$(curl -s $REMOTE_SCRIPT | sha1sum | awk '{print $1}')
@@ -144,6 +144,15 @@ else
 fi
 
 ######################################
+# PRE-EXTRACT GITHUB_REPO FROM SETTINGS (needed by self_update before full settings extraction)
+#
+_settings_file=$(find / -type f -path "*/deephunter/deephunter/settings.py" 2>/dev/null | head -1)
+if [ -n "$_settings_file" ]; then
+	GITHUB_REPO=$(grep -oP 'GITHUB_REPO\s?=\s?"\K[^"]+' "$_settings_file" 2>/dev/null || true)
+fi
+GITHUB_REPO="${GITHUB_REPO:-sebastiendamaye/deephunter}"
+
+######################################
 # CHECK IF NEW VERSION OF UPGRADE SCRIPT IS AVAILABLE
 #
 self_update
@@ -223,6 +232,10 @@ SERVER_USER=$(grep -oP 'SERVER_USER\s?=\s?"\K[^"]+' /tmp/settings.py || true)
 check_empty "SERVER_USER" "$SERVER_USER"
 GITHUB_URL=$(grep -oP 'GITHUB_URL\s?=\s?"\K[^"]+' /tmp/settings.py || true)
 check_empty "GITHUB_URL" "$GITHUB_URL"
+GITHUB_REPO=$(grep -oP 'GITHUB_REPO\s?=\s?"\K[^"]+' /tmp/settings.py || true)
+GITHUB_REPO="${GITHUB_REPO:-sebastiendamaye/deephunter}"
+GITHUB_LATEST_RELEASE_URL=$(grep -oP "GITHUB_LATEST_RELEASE_URL\s?=\s?['\"]\\K[^'\"]*" /tmp/settings.py || true)
+GITHUB_LATEST_RELEASE_URL="${GITHUB_LATEST_RELEASE_URL:-https://api.github.com/repos/${GITHUB_REPO}/releases/latest}"
 DBBACKUP_GPG_RECIPIENT=$(grep -oP "DBBACKUP_GPG_RECIPIENT\s?=\s?'\K[^']+" /tmp/settings.py || true)
 # List of django apps for migrations
 APPS=(qm extensions reports connectors repos notifications dashboard config)
@@ -237,7 +250,7 @@ echo -n -e "[\033[90mINFO\033[0m] DOWNLOADING NEW VERSION OF DEEPHUNTER ........
 cd /tmp
 rm -fR deephunter* >> /tmp/upgrade.log 2>&1
 if [ $UPDATE_ON = "release" ]; then
-	response=$(curl -s "https://api.github.com/repos/sebastiendamaye/deephunter/releases/latest")
+	response=$(curl -s "$GITHUB_LATEST_RELEASE_URL")
 	remote_version=$(echo $response | grep -oP '(?<="tag_name": ")[^"]+')
 	local_version=$(cat $APP_PATH/static/VERSION 2>/dev/null)
 	if [ "$remote_version" = "$local_version" ]; then

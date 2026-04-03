@@ -12,7 +12,7 @@ A help marker appears on the top right corner of the screen. Clicking on it will
 Report an issue
 ***************
 
-To report an issue, go to the `DeepHunter GitHub project <https://github.com/sebastiendamaye/deephunter/issues>`_ and click on the "New issue" button.
+To report an issue, go to the `DeepHunter GitHub project <https://github.com/sebastiendamaye/deephunter/issues>`_ and click on the "New issue" button. If you are running a fork, replace the repository URL with your own.
 
 DeepHunter is developed and maintained by Sébastien Damaye, under the `MIT license <https://github.com/sebastiendamaye/deephunter?tab=MIT-1-ov-file>`_. You are free to download, clone and modify the application.
 

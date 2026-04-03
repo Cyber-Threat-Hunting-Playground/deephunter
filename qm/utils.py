@@ -406,7 +406,7 @@ def get_available_statuses(analytic, edit=False):
     return statuses
 
 def find_sha_by_parent_sha(parent_sha, branch='main', per_page=100):
-    url = f'https://api.github.com/repos/sebastiendamaye/deephunter/commits'
+    url = f'https://api.github.com/repos/{settings.GITHUB_REPO}/commits'
     params = {'sha': branch, 'per_page': per_page}
     response = requests.get(
         url,

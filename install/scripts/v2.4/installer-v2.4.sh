@@ -9,6 +9,8 @@ set -euo pipefail
 export APP_PATH="/data/deephunter"
 export VENV_PATH="/data/venv"
 export TEMP_FOLDER="/data/tmp"
+export GITHUB_REPO="${GITHUB_REPO:-sebastiendamaye/deephunter}"
+export DEEPHUNTER_VERSION="${DEEPHUNTER_VERSION:-2.4}"
 
 ### Don't modify anything below this line unless you know what you're doing
 #
@@ -80,8 +82,8 @@ EOSQL
 #
 echo "DOWNLOAD DEEPHUNTER ...................................................... "
 cd /tmp/
-wget https://github.com/sebastiendamaye/deephunter/archive/refs/tags/v2.4.tar.gz
-tar xzf v2.4.tar.gz -C "$APP_PATH" --strip-components=1
+wget "https://github.com/${GITHUB_REPO}/archive/refs/tags/v${DEEPHUNTER_VERSION}.tar.gz"
+tar xzf "v${DEEPHUNTER_VERSION}.tar.gz" -C "$APP_PATH" --strip-components=1
 
 ############ 
 # Build the virtual environment
@@ -134,6 +136,9 @@ sed -i "s|^USER_GROUP = .*|USER_GROUP = \"$(id -nu):$(id -ng)\"|" settings.py
 
 # MySQL password
 sed -i "s|'PASSWORD': '.*'|'PASSWORD': '$MYSQL_DEEPHUNTER_PWD'|" settings.py
+
+# GitHub repository
+sed -i "s|^GITHUB_REPO = .*|GITHUB_REPO = \"${GITHUB_REPO}\"|" settings.py
 
 # Set proxy to empty
 sed -i "s|'http://proxy:port'|''|g" settings.py

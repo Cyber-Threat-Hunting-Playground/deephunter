@@ -28,10 +28,11 @@ AUTH_PROVIDER = 'entraid'
 USER_GROUP = "user:group"
 SERVER_USER = "www-data"
 
-# GitHub URL used by the deploy.sh script to clone the repo
-GITHUB_URL = "https://github.com/sebastiendamaye/deephunter.git"
-GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/sebastiendamaye/deephunter/releases/latest'
-GITHUB_COMMIT_URL = 'https://raw.githubusercontent.com/sebastiendamaye/deephunter/refs/heads/main/static/commit_id.txt'
+# GitHub repository (owner/repo). All GitHub URLs are derived from this single value.
+GITHUB_REPO = "sebastiendamaye/deephunter"
+GITHUB_URL = f"https://github.com/{GITHUB_REPO}.git"
+GITHUB_LATEST_RELEASE_URL = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
+GITHUB_COMMIT_URL = f'https://raw.githubusercontent.com/{GITHUB_REPO}/refs/heads/main/static/commit_id.txt'
 
 # Max retention (in days). By default 90 days (3 months)
 DB_DATA_RETENTION = 90
@@ -159,6 +160,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'django_auto_logout.context_processors.auto_logout_client',
+                'qm.context_processors.github_settings',
             ],
         },
     },

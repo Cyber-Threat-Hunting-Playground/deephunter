@@ -102,35 +102,45 @@ SERVER_USER
 	
 	SERVER_USER = "www-data"
 
-GITHUB_URL
-**********
+GITHUB_REPO
+***********
 - **Type**: string
-- **Description**: GitHub URL used by the ``deploy.sh`` script to clone the repo.
+- **Description**: GitHub repository in ``owner/repo`` format. All other GitHub URLs (``GITHUB_URL``, ``GITHUB_LATEST_RELEASE_URL``, ``GITHUB_COMMIT_URL``) are automatically derived from this single value. Change this when running a fork.
 - **Example**: 
 
 .. code-block:: python
 
-	GITHUB_URL = "https://token@github.com/myuser/deephunter.git"
+	GITHUB_REPO = "myuser/deephunter"
+
+GITHUB_URL
+**********
+- **Type**: string
+- **Description**: GitHub URL used by the upgrade script to clone the repo. Auto-derived from ``GITHUB_REPO``.
+- **Example**: 
+
+.. code-block:: python
+
+	GITHUB_URL = f"https://github.com/{GITHUB_REPO}.git"
 
 GITHUB_LATEST_RELEASE_URL
 *************************
 - **Type**: string
-- **Description**: GitHub URL to get the latest release.
+- **Description**: GitHub API URL to get the latest release. Auto-derived from ``GITHUB_REPO``.
 - **Example**: 
 
 .. code-block:: python
 
-	GITHUB_LATEST_RELEASE_URL = 'https://api.github.com/repos/sebastiendamaye/deephunter/releases/latest'
+	GITHUB_LATEST_RELEASE_URL = f'https://api.github.com/repos/{GITHUB_REPO}/releases/latest'
 
 GITHUB_COMMIT_URL
 *****************
 - **Type**: string
-- **Description**: GitHub URL to get the latest commit ID.
+- **Description**: GitHub URL to get the latest commit ID. Auto-derived from ``GITHUB_REPO``.
 - **Example**: 
 
 .. code-block:: python
 
-	GITHUB_COMMIT_URL = 'https://raw.githubusercontent.com/sebastiendamaye/deephunter/refs/heads/main/static/commit_id.txt'
+	GITHUB_COMMIT_URL = f'https://raw.githubusercontent.com/{GITHUB_REPO}/refs/heads/main/static/commit_id.txt'
 
 DB_DATA_RETENTION
 *****************

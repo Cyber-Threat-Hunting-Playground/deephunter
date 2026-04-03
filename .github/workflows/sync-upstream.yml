@@ -24,7 +24,7 @@ jobs:
       
       - name: Add upstream remote
         run: |
-          git remote add upstream https://github.com/sebastiendamaye/deephunter.git || true
+          git remote add upstream https://github.com/${{ vars.UPSTREAM_REPO || 'sebastiendamaye/deephunter' }}.git || true
           git fetch upstream
       
       - name: Merge upstream changes (excluding .github)

@@ -18,9 +18,9 @@
     <tr>
         <th>DeepHunter</th>
         <td>
-            <a href="https://github.com/sebastiendamaye/deephunter/releases/tag/{{ version }}" target="_blank">{{ version }}</a>
+            <a href="https://github.com/{{ github_repo }}/releases/tag/{{ version }}" target="_blank">{{ version }}</a>
             {% if version_commit %}
-                (Commit <a href="https://github.com/sebastiendamaye/deephunter/commit/{{ version_commit }}" target="_blank">{{ version_commit|slice:"7" }}</a>)
+                (Commit <a href="https://github.com/{{ github_repo }}/commit/{{ version_commit }}" target="_blank">{{ version_commit|slice:"7" }}</a>)
             {% else %}
                 (DEV)
             {% endif %}

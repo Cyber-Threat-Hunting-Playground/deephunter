@@ -77,3 +77,19 @@
         <p>No API keys generated yet.</p>
     {% endif %}
 </div>
+<!-- #region agent log -->
+<script>
+document.body.addEventListener('htmx:configRequest', function(evt) {
+    if (evt.detail.path && evt.detail.path.includes('delete-api-key')) {
+        var hasCSRF = !!(evt.detail.headers['X-CSRFToken'] || evt.detail.parameters['csrfmiddlewaretoken']);
+        var csrfCookie = document.cookie.match(/csrftoken=([^;]+)/);
+        fetch('http://127.0.0.1:7931/ingest/51b3cde3-1f2f-468a-8688-78ad040fa7e5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'77d9df'},body:JSON.stringify({sessionId:'77d9df',location:'api_keys.html:htmx:configRequest',message:'Revoke button htmx request config',data:{path:evt.detail.path,method:evt.detail.verb,hasCSRFInHeaders:!!evt.detail.headers['X-CSRFToken'],hasCSRFInParams:!!evt.detail.parameters['csrfmiddlewaretoken'],headerKeys:Object.keys(evt.detail.headers),paramKeys:Object.keys(evt.detail.parameters),hasCsrfCookie:!!csrfCookie},timestamp:Date.now(),hypothesisId:'A'})}).catch(function(){});
+    }
+});
+document.body.addEventListener('htmx:responseError', function(evt) {
+    if (evt.detail.pathInfo && evt.detail.pathInfo.requestPath && evt.detail.pathInfo.requestPath.includes('delete-api-key')) {
+        fetch('http://127.0.0.1:7931/ingest/51b3cde3-1f2f-468a-8688-78ad040fa7e5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'77d9df'},body:JSON.stringify({sessionId:'77d9df',location:'api_keys.html:htmx:responseError',message:'Revoke button error response',data:{status:evt.detail.xhr?evt.detail.xhr.status:null,responseText:evt.detail.xhr?evt.detail.xhr.responseText.substring(0,500):null},timestamp:Date.now(),hypothesisId:'A'})}).catch(function(){});
+    }
+});
+</script>
+<!-- #endregion -->

@@ -52,7 +52,7 @@ html_title = "DeepHunter"
 html_copy_source = True
 """
 html_theme_options = {
-    "repository_url": "https://github.com/sebastiendamaye/deephunter",
+    "repository_url": "https://github.com/<owner>/<repo>",
     "use_repository_button": True,
 }
 """

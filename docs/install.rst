@@ -18,7 +18,7 @@ For example, to install version 2.5:
 
 .. code-block:: sh
       
-   $ wget https://raw.githubusercontent.com/sebastiendamaye/deephunter/main/install/scripts/v2.5/installer-v2.5.sh
+   $ wget https://raw.githubusercontent.com/<owner>/<repo>/main/install/scripts/v2.5/installer-v2.5.sh
    $ chmod +x installer-v2.5.sh
    $ ./installer-v2.5.sh
 
@@ -66,9 +66,13 @@ To download DeepHunter, use the following git command:
 
 	$ sudo apt install git
 	$ cd /data/
-	$ git clone https://github.com/sebastiendamaye/deephunter.git
+	$ git clone https://github.com/<owner>/<repo>.git
 
-While cloning the repo as explained above will give you access to the latest features, you may prefer to install the `latest stable release <https://github.com/sebastiendamaye/deephunter/releases/latest>`_.
+While cloning the repo as explained above will give you access to the latest features, you may prefer to install the `latest stable release <https://github.com/<owner>/<repo>/releases/latest>`_.
+
+.. note::
+
+   Replace ``<owner>/<repo>`` with the GitHub repository matching your ``GITHUB_REPO`` setting (e.g. ``sebastiendamaye/deephunter``).
 
 Install the python dependencies
 ===============================
