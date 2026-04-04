@@ -1,12 +1,17 @@
 name: Security dependency update (pip-audit)
 
 on:
-  schedule:
-    - cron: "0 3 * * 1" # weekly, Monday
+  # ✅ Manual execution from GitHub UI
   workflow_dispatch:
-  push:
-    paths:
-      - requirements.txt
+    inputs:
+      reason:
+        description: "Reason for manual execution"
+        required: false
+        default: "Manual security audit"
+
+  # ✅ Scheduled execution (weekly)
+  schedule:
+    - cron: "0 3 * * 1" # Monday at 03:00 UTC
 
 permissions:
   contents: write
@@ -28,42 +33,40 @@ jobs:
       - name: Install tooling
         run: |
           python -m pip install --upgrade pip
-          pip install pip-audit pip-tools
+          pip install pip-audit pip-tools jq
 
-      # --------------------------------------------------
-      # 1. Detect vulnerabilities
-      # --------------------------------------------------
+      # ---------------------------------
+      # 1️⃣ Run pip-audit
+      # ---------------------------------
       - name: Run pip-audit
         id: audit
         continue-on-error: true
         run: |
           pip-audit -r requirements.txt --format json > audit.json
 
-      - name: Check if vulnerabilities exist
+      - name: Check for vulnerabilities
         id: vulncheck
         run: |
           COUNT=$(jq length audit.json)
           echo "vuln_count=$COUNT" >> "$GITHUB_OUTPUT"
           if [ "$COUNT" -eq 0 ]; then
-            echo "No vulnerabilities found"
+            echo "✅ No vulnerabilities found"
             exit 0
           fi
 
-      # --------------------------------------------------
-      # 2. Upgrade affected packages only
-      # --------------------------------------------------
-      - name: Upgrade vulnerable dependencies
+      # ---------------------------------
+      # 2️⃣ Upgrade vulnerable dependencies
+      # ---------------------------------
+      - name: Upgrade vulnerable packages
         if: steps.vulncheck.outputs.vuln_count != '0'
         run: |
           jq -r '.[].name' audit.json | sort -u > vulnerable.txt
           xargs -a vulnerable.txt pip install --upgrade
-
-          # Freeze updated versions back into requirements.txt
           pip freeze > requirements.txt
 
-      # --------------------------------------------------
-      # 3. Create pull request
-      # --------------------------------------------------
+      # ---------------------------------
+      # 3️⃣ Create Pull Request
+      # ---------------------------------
       - name: Create security PR
         if: steps.vulncheck.outputs.vuln_count != '0'
         uses: peter-evans/create-pull-request@v6
@@ -73,12 +76,15 @@ jobs:
           title: "Security: fix CVEs detected by pip-audit"
           commit-message: "security(deps): upgrade vulnerable Python dependencies"
           body: |
-            ## 🔒 Security fixes
+            ## 🔒 Security update
 
-            This pull request was generated automatically by **pip-audit**.
+            This PR was **automatically generated** by `pip-audit`.
 
-            ✅ All known CVEs reported during CI execution were addressed.  
-            ✅ Dependency upgrades are limited to non-breaking versions.
+            **Trigger:** `${{ github.event_name }}`
+            **Reason:** `${{ inputs.reason || 'Scheduled security scan' }}`
+
+            ✅ Known CVEs have been addressed  
+            ✅ Dependency upgrades are non-breaking
 
             Please review and merge.
 
