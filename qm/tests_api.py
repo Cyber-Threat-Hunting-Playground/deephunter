@@ -27,29 +27,29 @@ class AnalyticAPITestCase(TestCase):
         self.api_key = ApiKey.objects.create(name='Test Key', key='testkey123', key_type='READ')
 
     def test_get_analytics(self):
-        response = self.client.get(reverse('api_analytics'), HTTP_AUTHORIZATION=f'Bearer {self.api_key.key}')
+        response = self.client.get(reverse('analytic-list'), HTTP_AUTHORIZATION=f'Bearer {self.api_key.key}')
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertIn('data', data)
-        self.assertEqual(len(data['data']), 2)
+        self.assertIn('results', data)
+        self.assertEqual(len(data['results']), 2)
 
     def test_get_analytics_with_status_filter(self):
-        response = self.client.get(reverse('api_analytics'), {'status': 'PUB'}, HTTP_AUTHORIZATION=f'Bearer {self.api_key.key}')
+        response = self.client.get(reverse('analytic-list'), {'status': 'PUB'}, HTTP_AUTHORIZATION=f'Bearer {self.api_key.key}')
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(len(data['data']), 1)
-        self.assertEqual(data['data'][0]['name'], 'Test Analytic 1')
+        self.assertEqual(len(data['results']), 1)
+        self.assertEqual(data['results'][0]['name'], 'Test Analytic 1')
 
     def test_get_analytic_detail(self):
-        response = self.client.get(reverse('api_analytic_detail', args=[self.analytic1.pk]), HTTP_AUTHORIZATION=f'Bearer {self.api_key.key}')
+        response = self.client.get(reverse('analytic-detail', args=[self.analytic1.pk]), HTTP_AUTHORIZATION=f'Bearer {self.api_key.key}')
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(data['data']['name'], 'Test Analytic 1')
+        self.assertEqual(data['name'], 'Test Analytic 1')
 
     def test_get_analytic_detail_not_found(self):
-        response = self.client.get(reverse('api_analytic_detail', args=[999]), HTTP_AUTHORIZATION=f'Bearer {self.api_key.key}')
+        response = self.client.get(reverse('analytic-detail', args=[999]), HTTP_AUTHORIZATION=f'Bearer {self.api_key.key}')
         self.assertEqual(response.status_code, 404)
-        
+
     def test_unauthorized_access(self):
-        response = self.client.get(reverse('api_analytic_detail', args=[self.analytic1.pk]))
-        self.assertEqual(response.status_code, 401)
+        response = self.client.get(reverse('analytic-detail', args=[self.analytic1.pk]))
+        self.assertEqual(response.status_code, 403)

@@ -1,11 +1,10 @@
-import json
 from django.http import JsonResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 from config.decorators import require_api_key, verify_api_key
 from .models import Analytic, Category, MitreTactic, MitreTechnique, Campaign, Snapshot
 
-def serialize_category(category):
+def serialize_analytic(analytic):
     """Serialize an Analytic object to a dictionary."""
     return {
         'id': analytic.id,

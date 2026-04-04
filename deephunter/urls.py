@@ -24,11 +24,7 @@ urlpatterns = [
     path('dashboard/', include('dashboard.urls')),
     path('config/', include('config.urls')),
 
-    # REST API v1 — function-based views (matched first for overlapping paths)
-    path('api/v1/', include('qm.api_urls')),
-    path('api/v1/repos/', include('repos.api_urls')),
-    path('api/v1/connectors/', include('connectors.api_urls')),
-    # REST API v1 — DRF router (browsable root + ViewSet endpoints)
+    # REST API v1 — DRF router (browsable API + ViewSets; must precede any overlapping includes)
     path('api/v1/', include(router.urls)),
 
     # OpenAPI schema & interactive docs
