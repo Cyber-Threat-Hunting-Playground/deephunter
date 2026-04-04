@@ -3,23 +3,21 @@ name: pip Dependency Security Scan
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 3 * * 1" # Weekly
+    - cron: "0 3 * * 1"
 
 permissions:
+  security-events: write
   contents: write
   pull-requests: write
-  security-events: write   # 🔑 REQUIRED for GHAS
 
 jobs:
   pip-audit:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -28,77 +26,74 @@ jobs:
           python -m pip install --upgrade pip
           pip install pip-audit jq
 
-      # -------------------------------------------------
-      # 1️⃣ Run pip-audit (SARIF + JSON)
-      # -------------------------------------------------
-      - name: Run pip-audit (SARIF)
-        continue-on-error: true
+      # ------------------------------------------------
+      # 1. Scan (never fail CI)
+      # ------------------------------------------------
+      - name: Run pip-audit
         run: |
           pip-audit -r requirements.txt --format sarif --output pip-audit.sarif
-          pip-audit -r requirements.txt --format json  --output audit.json
+          pip-audit -r requirements.txt --format json  --output audit.json || true
 
-      # -------------------------------------------------
-      # 2️⃣ Upload results to GitHub Advanced Security
-      # -------------------------------------------------
-      - name: Upload SARIF to GitHub Security
+      - name: Upload results to GitHub Advanced Security
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: pip-audit.sarif
           category: dependency-security
 
-      # -------------------------------------------------
-      # 3️⃣ Check for fixable vulnerabilities
-      # -------------------------------------------------
-      - name: Evaluate findings
-        id: findings
+      # ------------------------------------------------
+      # 2. Apply deterministic fixes
+      # ------------------------------------------------
+      - name: Apply fix versions
+        id: fixes
         run: |
-          COUNT=$(jq length audit.json)
-          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
-          [ "$COUNT" -eq 0 ] && exit 0
+          FIXABLE=$(jq '
+            [.[] | select(.fix_versions | length > 0)] | length
+          ' audit.json)
 
-      # -------------------------------------------------
-      # 4️⃣ Apply vendor-recommended FIX versions
-      # -------------------------------------------------
-      - name: Update requirements.txt with fixed versions
-        if: steps.findings.outputs.count != '0'
-        run: |
+          echo "fixable=$FIXABLE" >> "$GITHUB_OUTPUT"
+
+          if [ "$FIXABLE" -eq 0 ]; then
+            echo "No fixable vulnerabilities found"
+            exit 0
+          fi
+
           cp requirements.txt requirements.txt.bak
 
           jq -r '
             .[] |
-            select(.fix_versions != null and (.fix_versions | length > 0)) |
+            select(.fix_versions | length > 0) |
             "\(.name)==\(.fix_versions[-1])"
-          ' audit.json | while read entry; do
-            pkg="${entry%%==*}"
-            ver="${entry##*==}"
-            sed -i "s|^$pkg.*|$pkg==$ver|" requirements.txt
+          ' audit.json | while read pinned; do
+            pkg="${pinned%%==*}"
+            sed -i "s|^$pkg.*|$pinned|" requirements.txt
           done
 
-          echo "==== Dependency changes ===="
+          echo "==== Dependency diff ===="
           git diff
 
-      # -------------------------------------------------
-      # 5️⃣ Create remediation PR
-      # -------------------------------------------------
-      - name: Create security remediation PR
-        if: steps.findings.outputs.count != '0'
+      # ------------------------------------------------
+      # 3. Create PR (ONLY if there is a diff)
+      # ------------------------------------------------
+      - name: Create remediation PR
+        if: steps.fixes.outputs.fixable != '0'
         uses: peter-evans/create-pull-request@v6
         with:
           branch: security/pip-audit-fixes
           delete-branch: true
-          title: "Security: remediate dependency vulnerabilities"
-          commit-message: "security(deps): apply pip-audit CVE fixes"
+          title: "Security: fix dependency CVEs"
+          commit-message: "security(deps): pin fixed versions from pip-audit"
           body: |
-            ## 🔒 GitHub Advanced Security – Dependency Fix
+            ## 🔒 Dependency Security Fix
 
-            This PR remediates dependency vulnerabilities detected by **pip‑audit**
-            and reported to **GitHub Advanced Security**.
+            This pull request was generated automatically and is aligned with
+            **GitHub Advanced Security**.
 
-            ✅ Alerts are visible in **Security → Code scanning alerts**
-            ✅ Fixes follow **vendor‑recommended versions**
-            ✅ Changes are minimal and reviewable
+            ✅ CVEs detected via `pip-audit`
+            ✅ Alerts uploaded as SARIF
+            ✅ Dependencies pinned to vendor‑recommended fixed versions
+            ✅ No CI failures during detection or remediation
 
-            _Generated automatically._
+            Please review and merge.
           labels: |
             security
             dependencies
