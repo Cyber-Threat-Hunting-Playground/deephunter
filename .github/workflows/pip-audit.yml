@@ -1,7 +1,7 @@
 name: Security dependency update (pip-audit)
 
 on:
-  # ✅ Manual execution from GitHub UI
+  # Manual execution from GitHub UI
   workflow_dispatch:
     inputs:
       reason:
@@ -9,7 +9,7 @@ on:
         required: false
         default: "Manual security audit"
 
-  # ✅ Scheduled execution (weekly)
+  # Weekly scheduled execution
   schedule:
     - cron: "0 3 * * 1" # Monday at 03:00 UTC
 
@@ -49,15 +49,16 @@ jobs:
         run: |
           COUNT=$(jq length audit.json)
           echo "vuln_count=$COUNT" >> "$GITHUB_OUTPUT"
+
           if [ "$COUNT" -eq 0 ]; then
             echo "✅ No vulnerabilities found"
             exit 0
           fi
 
       # ---------------------------------
-      # 2️⃣ Upgrade vulnerable dependencies
+      # 2️⃣ Upgrade vulnerable packages
       # ---------------------------------
-      - name: Upgrade vulnerable packages
+      - name: Upgrade vulnerable dependencies
         if: steps.vulncheck.outputs.vuln_count != '0'
         run: |
           jq -r '.[].name' audit.json | sort -u > vulnerable.txt
@@ -67,7 +68,7 @@ jobs:
       # ---------------------------------
       # 3️⃣ Create Pull Request
       # ---------------------------------
-      - name: Create security PR
+      - name: Create security pull request
         if: steps.vulncheck.outputs.vuln_count != '0'
         uses: peter-evans/create-pull-request@v6
         with:
@@ -76,19 +77,18 @@ jobs:
           title: "Security: fix CVEs detected by pip-audit"
           commit-message: "security(deps): upgrade vulnerable Python dependencies"
           body: |
-            ## 🔒 Security update
+            ## 🔒 Security audit results
 
-            This PR was **automatically generated** by `pip-audit`.
+            This pull request was **automatically generated** by `pip-audit`.
 
             **Trigger:** `${{ github.event_name }}`
             **Reason:** `${{ inputs.reason || 'Scheduled security scan' }}`
 
-            ✅ Known CVEs have been addressed  
-            ✅ Dependency upgrades are non-breaking
+            ✅ Known CVEs detected during CI were addressed  
+            ✅ Dependency upgrades remain non‑breaking
 
             Please review and merge.
 
           labels: |
             security
             dependencies
-``
