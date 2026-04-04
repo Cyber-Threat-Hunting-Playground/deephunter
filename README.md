@@ -4,6 +4,7 @@
 [![Django](https://img.shields.io/badge/django-%23092E20.svg?style=flat&logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![MariaDB](https://img.shields.io/badge/MariaDB-003545?style=flat&logo=mariadb&logoColor=white)](https://mariadb.org/)
 [![Redis](https://img.shields.io/badge/redis-%23DD0031.svg?style=flat&logo=redis&logoColor=white)](https://redis.io/)
+
 [![CodeQL](https://github.com/Cyber-Threat-Hunting-Playground/deephunter/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/Cyber-Threat-Hunting-Playground/deephunter/actions/workflows/github-code-scanning/codeql)
 
 DeepHunter is a Threat Hunting platform that features:
