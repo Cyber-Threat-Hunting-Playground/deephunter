@@ -1,4 +1,4 @@
-name: Security dependency update (pip-audit)
+name: Security Audit
 
 on:
   # Manual execution from GitHub UI
@@ -35,9 +35,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install pip-audit pip-tools jq
 
-      # ---------------------------------
+      # --------------------------------------------------
       # 1️⃣ Run pip-audit
-      # ---------------------------------
+      # --------------------------------------------------
       - name: Run pip-audit
         id: audit
         continue-on-error: true
@@ -53,42 +53,3 @@ jobs:
           if [ "$COUNT" -eq 0 ]; then
             echo "✅ No vulnerabilities found"
             exit 0
-          fi
-
-      # ---------------------------------
-      # 2️⃣ Upgrade vulnerable packages
-      # ---------------------------------
-      - name: Upgrade vulnerable dependencies
-        if: steps.vulncheck.outputs.vuln_count != '0'
-        run: |
-          jq -r '.[].name' audit.json | sort -u > vulnerable.txt
-          xargs -a vulnerable.txt pip install --upgrade
-          pip freeze > requirements.txt
-
-      # ---------------------------------
-      # 3️⃣ Create Pull Request
-      # ---------------------------------
-      - name: Create security pull request
-        if: steps.vulncheck.outputs.vuln_count != '0'
-        uses: peter-evans/create-pull-request@v6
-        with:
-          branch: security/pip-audit-fixes
-          delete-branch: true
-          title: "Security: fix CVEs detected by pip-audit"
-          commit-message: "security(deps): upgrade vulnerable Python dependencies"
-          body: |
-            ## 🔒 Security audit results
-
-            This pull request was **automatically generated** by `pip-audit`.
-
-            **Trigger:** `${{ github.event_name }}`
-            **Reason:** `${{ inputs.reason || 'Scheduled security scan' }}`
-
-            ✅ Known CVEs detected during CI were addressed  
-            ✅ Dependency upgrades remain non‑breaking
-
-            Please review and merge.
-
-          labels: |
-            security
-            dependencies
