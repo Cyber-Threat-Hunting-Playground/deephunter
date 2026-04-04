@@ -1,28 +1,21 @@
-name: Security Audit
+name: pip Dependency Security Scan
 
 on:
-  # Manual execution from GitHub UI
   workflow_dispatch:
-    inputs:
-      reason:
-        description: "Reason for manual execution"
-        required: false
-        default: "Manual security audit"
-
-  # Weekly scheduled execution
   schedule:
-    - cron: "0 3 * * 1" # Monday at 03:00 UTC
+    - cron: "0 3 * * 1" # Weekly
 
 permissions:
   contents: write
   pull-requests: write
+  security-events: write   # 🔑 REQUIRED for GHAS
 
 jobs:
-  audit-and-fix:
+  pip-audit:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v5
 
       - name: Set up Python
@@ -30,26 +23,82 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install tooling
+      - name: Install tools
         run: |
           python -m pip install --upgrade pip
-          pip install pip-audit pip-tools jq
+          pip install pip-audit jq
 
-      # --------------------------------------------------
-      # 1️⃣ Run pip-audit
-      # --------------------------------------------------
-      - name: Run pip-audit
-        id: audit
+      # -------------------------------------------------
+      # 1️⃣ Run pip-audit (SARIF + JSON)
+      # -------------------------------------------------
+      - name: Run pip-audit (SARIF)
         continue-on-error: true
         run: |
-          pip-audit -r requirements.txt --format json > audit.json
+          pip-audit -r requirements.txt --format sarif --output pip-audit.sarif
+          pip-audit -r requirements.txt --format json  --output audit.json
 
-      - name: Check for vulnerabilities
-        id: vulncheck
+      # -------------------------------------------------
+      # 2️⃣ Upload results to GitHub Advanced Security
+      # -------------------------------------------------
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: pip-audit.sarif
+          category: dependency-security
+
+      # -------------------------------------------------
+      # 3️⃣ Check for fixable vulnerabilities
+      # -------------------------------------------------
+      - name: Evaluate findings
+        id: findings
         run: |
           COUNT=$(jq length audit.json)
-          echo "vuln_count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          [ "$COUNT" -eq 0 ] && exit 0
 
-          if [ "$COUNT" -eq 0 ]; then
-            echo "✅ No vulnerabilities found"
-            exit 0
+      # -------------------------------------------------
+      # 4️⃣ Apply vendor-recommended FIX versions
+      # -------------------------------------------------
+      - name: Update requirements.txt with fixed versions
+        if: steps.findings.outputs.count != '0'
+        run: |
+          cp requirements.txt requirements.txt.bak
+
+          jq -r '
+            .[] |
+            select(.fix_versions != null and (.fix_versions | length > 0)) |
+            "\(.name)==\(.fix_versions[-1])"
+          ' audit.json | while read entry; do
+            pkg="${entry%%==*}"
+            ver="${entry##*==}"
+            sed -i "s|^$pkg.*|$pkg==$ver|" requirements.txt
+          done
+
+          echo "==== Dependency changes ===="
+          git diff
+
+      # -------------------------------------------------
+      # 5️⃣ Create remediation PR
+      # -------------------------------------------------
+      - name: Create security remediation PR
+        if: steps.findings.outputs.count != '0'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: security/pip-audit-fixes
+          delete-branch: true
+          title: "Security: remediate dependency vulnerabilities"
+          commit-message: "security(deps): apply pip-audit CVE fixes"
+          body: |
+            ## 🔒 GitHub Advanced Security – Dependency Fix
+
+            This PR remediates dependency vulnerabilities detected by **pip‑audit**
+            and reported to **GitHub Advanced Security**.
+
+            ✅ Alerts are visible in **Security → Code scanning alerts**
+            ✅ Fixes follow **vendor‑recommended versions**
+            ✅ Changes are minimal and reviewable
+
+            _Generated automatically._
+          labels: |
+            security
+            dependencies
