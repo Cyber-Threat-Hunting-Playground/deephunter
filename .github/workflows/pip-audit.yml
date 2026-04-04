@@ -30,12 +30,67 @@ jobs:
           pip install "pip-audit>=2.10.0" jq
 
       # ------------------------------------------------
-      # 1. Scan (never fail CI)
+      # 1. Scan (JSON only – never fail CI)
       # ------------------------------------------------
-      - name: Run pip-audit
+      - name: Run pip-audit (JSON)
         run: |
-          pip-audit -r requirements.txt --format sarif --output pip-audit.sarif
-          pip-audit -r requirements.txt --format json  --output audit.json || true
+          pip-audit -r requirements.txt \
+            --format json \
+            --output audit.json || true
+
+      # ------------------------------------------------
+      # 2. Convert pip-audit JSON → SARIF
+      # ------------------------------------------------
+      - name: Convert pip-audit JSON to SARIF
+        run: |
+          jq -n \
+            --argjson findings "$(cat audit.json)" '
+          {
+            version: "2.1.0",
+            runs: [{
+              tool: {
+                driver: {
+                  name: "pip-audit",
+                  informationUri: "https://github.com/pypa/pip-audit",
+                  rules: (
+                    $findings
+                    | map(.id)
+                    | unique
+                    | map({
+                        id: .,
+                        shortDescription: { text: . }
+                      })
+                  )
+                }
+              },
+              results: (
+                $findings
+                | map({
+                    ruleId: .id,
+                    level: "error",
+                    message: {
+                      text: (
+                        .name + " " + .version +
+                        " – " + .id +
+                        (
+                          if (.fix_versions | length) > 0
+                          then " (fix: " + (.fix_versions | join(", ")) + ")"
+                          else ""
+                          end
+                        )
+                      )
+                    },
+                    locations: [{
+                      physicalLocation: {
+                        artifactLocation: {
+                          uri: "requirements.txt"
+                        }
+                      }
+                    }]
+                })
+              )
+            }]
+          }' > pip-audit.sarif
 
       - name: Upload results to GitHub Advanced Security
         uses: github/codeql-action/upload-sarif@v3
@@ -44,7 +99,7 @@ jobs:
           category: dependency-security
 
       # ------------------------------------------------
-      # 2. Apply deterministic fixes
+      # 3. Apply deterministic fixes
       # ------------------------------------------------
       - name: Apply fix versions
         id: fixes
@@ -75,7 +130,7 @@ jobs:
           git diff
 
       # ------------------------------------------------
-      # 3. Create PR (ONLY if there is a diff)
+      # 4. Create PR (ONLY if there is a diff)
       # ------------------------------------------------
       - name: Create remediation PR
         if: steps.fixes.outputs.fixable != '0'
