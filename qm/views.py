@@ -19,6 +19,7 @@ from connectors.models import Connector
 from .tasks import regenerate_stats, regenerate_campaign
 import ipaddress
 from connectors.utils import is_connector_enabled, is_connector_for_analytics, get_connector_conf
+from config.app_settings import get_ai_connector
 from celery import current_app
 from .utils import get_campaign_date, get_available_statuses, find_sha_by_parent_sha
 from urllib.parse import urlencode, quote
@@ -50,7 +51,6 @@ CAMPAIGN_MAX_HOSTS_THRESHOLD = settings.CAMPAIGN_MAX_HOSTS_THRESHOLD
 ON_MAXHOSTS_REACHED = settings.ON_MAXHOSTS_REACHED
 ANALYTICS_PER_PAGE = settings.ANALYTICS_PER_PAGE
 DAYS_BEFORE_REVIEW = settings.DAYS_BEFORE_REVIEW
-AI_CONNECTOR = settings.AI_CONNECTOR
 
 @login_required
 @permission_required("qm.view_analytic", raise_exception=True)
@@ -1313,7 +1313,7 @@ def add_analytic(request):
             analytic.save()
             form.save_m2m() # save ManyToMany relationships
             return HttpResponseRedirect(f'/qm/listanalytics/?search={form.cleaned_data["name"]}')
-    context = {'form': form, 'AI_CONNECTOR': AI_CONNECTOR}
+    context = {'form': form, 'AI_CONNECTOR': get_ai_connector()}
     return render(request, 'analytic_form.html', context)
 
 @login_required
@@ -1331,7 +1331,7 @@ def edit_analytic(request, analytic_id):
     context = {
         'form': form,
         'analytic_id': analytic_id,
-        'AI_CONNECTOR': AI_CONNECTOR
+        'AI_CONNECTOR': get_ai_connector()
     }
     return render(request, 'analytic_form.html', context)
 
@@ -1351,7 +1351,7 @@ def clone_analytic(request, analytic_id):
         initial[field] = getattr(analytic, field).all()
 
     form = AnalyticForm(initial=initial, allowed_status_choices=["DRAFT", "PUB"])
-    context = {'form': form, 'AI_CONNECTOR': AI_CONNECTOR}
+    context = {'form': form, 'AI_CONNECTOR': get_ai_connector()}
     return render(request, 'analytic_form.html', context)
 
 @login_required
@@ -1361,9 +1361,10 @@ def suggest_mitre_with_ai(request):
         query = request.POST.get('query', '')
         #add_debug_notification(f'AI Suggest MITRE Techniques for query: {query}')
         
-        if is_connector_enabled(AI_CONNECTOR):
+        ai_name = get_ai_connector()
+        if ai_name and is_connector_enabled(ai_name) and all_connectors.get(ai_name):
             # call the AI connector to get MITRE ATT&CK techniques
-            mitre_ttps = all_connectors.get(AI_CONNECTOR).get_mitre_techniques_from_query(query)
+            mitre_ttps = all_connectors.get(ai_name).get_mitre_techniques_from_query(query)
             # extract IDs corresponding to MitreTechnique objects in DB
             ttp_ids = []
             for mitre_ttp in mitre_ttps:
@@ -1460,9 +1461,21 @@ def query_ai_assistant(request):
     connector_id = request.GET.get('connector') if request.method == 'GET' else None
     form = QueryAIAssistantForm(request.POST or None, selected_connector_id=connector_id)
     if form.is_valid():
+        ai_name = get_ai_connector()
+        if not ai_name or not is_connector_enabled(ai_name):
+            add_error_notification(
+                'Configure and enable an AI connector under Settings → Application (or settings.py).'
+            )
+            return render(request, 'partials/query_ai_assistant.html', {'form': form})
+
+        ai_module = all_connectors.get(ai_name)
+        if not ai_module or not hasattr(ai_module, 'write_query_with_ai'):
+            add_error_notification('The selected AI connector does not support the query assistant.')
+            return render(request, 'partials/query_ai_assistant.html', {'form': form})
+
         response = HttpResponse("")
         response['HX-Trigger'] = 'closeModal'
-        
+
         query_language = all_connectors.get(form.cleaned_data['connector'].name).query_language()
         question_for_ai = f"""Write a threat hunting query (Language: {query_language}) to detect the logic below. No explanations, only the query.
         
@@ -1472,8 +1485,7 @@ def query_ai_assistant(request):
         """
         #add_debug_notification(f'Question for AI: {question_for_ai}')
 
-        # Here AI response.... 
-        ai_response = all_connectors.get(AI_CONNECTOR).write_query_with_ai(question_for_ai)
+        ai_response = ai_module.write_query_with_ai(question_for_ai)
         #add_debug_notification(f'AI response: {ai_response}')
         # we need to encode the response because it can't contain new lines
         encoded_response = base64.b64encode(ai_response.encode('utf-8'))

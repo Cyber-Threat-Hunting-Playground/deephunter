@@ -320,8 +320,8 @@ AUTO_DELETE_NOTIFICATIONS_AFTER
 AI_CONNECTOR
 ************
 - **Type**: string
-- **Possible values**: ``gemini``, or empty string (to disable AI features)
-- **Description**: Choose the AI connector to use for AI features (e.g., automatic identification of MITRE techniques based on query). If you don't want to use AI features, leave it as an empty string.
+- **Possible values**: Name of an installed plugin whose domain is **AI** (e.g. ``gemini``, ``openai``), or empty string (to disable AI features)
+- **Description**: Choose the AI connector to use for AI features (e.g., automatic identification of MITRE techniques based on query). If you don't want to use AI features, leave it as an empty string. You can also set this from the Web GUI: **Settings → Application**, which stores an override in the database (when no override exists, this ``settings.py`` value is used).
 - **Example**:
 
 .. code-block:: python

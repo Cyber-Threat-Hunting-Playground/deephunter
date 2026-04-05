@@ -3,7 +3,10 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.http import HttpResponse
 from django.conf import settings
 from django.contrib.auth.models import Group, Permission
-from .models import Module, ModulePermission
+from django.views.decorators.http import require_http_methods, require_POST
+from connectors.models import Connector
+from .models import ApiKey, AppSetting, Module, ModulePermission
+from .app_settings import AI_CONNECTOR_KEY, get_ai_connector_form_state
 from qm.models import TasksStatus
 from notifications.utils import add_debug_notification, add_error_notification, add_success_notification
 from .utils import check_group_permission
@@ -14,6 +17,62 @@ DEBUG = settings.DEBUG
 @login_required
 def deephunter_settings(request):
     return render(request, 'deephunter_settings.html')
+
+
+@login_required
+@permission_required('config.view_admin', raise_exception=True)
+def app_settings_panel(request):
+    """
+    Application settings editable from the Web GUI (overrides settings.py when saved).
+    """
+    ai_connectors = Connector.objects.filter(domain='ai').order_by('name')
+    ai_state = get_ai_connector_form_state()
+    return render(
+        request,
+        'partials/app_settings.html',
+        {
+            'ai_connectors': ai_connectors,
+            'ai_state': ai_state,
+        },
+    )
+
+
+@login_required
+@permission_required('config.view_admin', raise_exception=True)
+@require_http_methods(['POST'])
+def app_settings_save_ai_connector(request):
+    choice = (request.POST.get('ai_connector') or '').strip()
+    if choice == '__inherit__':
+        AppSetting.objects.filter(key=AI_CONNECTOR_KEY).delete()
+        add_success_notification('AI connector now follows the value in settings.py.')
+    elif choice == '__disabled__':
+        AppSetting.objects.update_or_create(
+            key=AI_CONNECTOR_KEY,
+            defaults={'value': ''},
+        )
+        add_success_notification('AI features are disabled (override saved).')
+    else:
+        if not choice:
+            add_error_notification('Select an AI connector or another option.')
+        elif not Connector.objects.filter(domain='ai', name=choice).exists():
+            add_error_notification('Invalid AI connector.')
+        else:
+            AppSetting.objects.update_or_create(
+                key=AI_CONNECTOR_KEY,
+                defaults={'value': choice},
+            )
+            add_success_notification(f'AI connector set to "{choice}".')
+
+    ai_connectors = Connector.objects.filter(domain='ai').order_by('name')
+    ai_state = get_ai_connector_form_state()
+    return render(
+        request,
+        'partials/app_settings.html',
+        {
+            'ai_connectors': ai_connectors,
+            'ai_state': ai_state,
+        },
+    )
 
 @login_required
 @permission_required('config.change_modulepermission', raise_exception=True)
@@ -110,9 +169,7 @@ def stop_running_task(request, task_id):
 
 import secrets
 from datetime import timedelta
-from django.views.decorators.http import require_POST
 from django.utils import timezone
-from .models import ApiKey
 
 EXPIRATION_CHOICES = [
     ('1d',   '1 day'),

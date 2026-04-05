@@ -51,3 +51,19 @@ class ApiKey(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+
+
+class AppSetting(models.Model):
+    """
+    Optional overrides for values normally set in settings.py.
+    If no row exists for a given key, the project reverts to Django settings.
+    """
+
+    key = models.CharField(max_length=80, unique=True, db_index=True)
+    value = models.TextField(blank=True, default="")
+
+    def __str__(self):
+        return self.key
+
+    class Meta:
+        ordering = ["key"]

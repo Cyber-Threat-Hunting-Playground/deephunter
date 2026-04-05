@@ -34,27 +34,34 @@ def db_totalnumberanalytics(request):
 @login_required
 @permission_required('qm.view_analytic', raise_exception=True)
 def db_analyticsrunintodaycampaign(request):
-    campaign_today = get_object_or_404(Campaign, name='daily_cron_{}'.format(datetime.today().strftime('%Y-%m-%d')))
-    campaign_yesterday = get_object_or_404(Campaign, name='daily_cron_{}'.format((datetime.today()-timedelta(days=1)).strftime('%Y-%m-%d')))
-    delta = campaign_today.nb_queries - campaign_yesterday.nb_queries
+    today_name = "daily_cron_{}".format(datetime.today().strftime("%Y-%m-%d"))
+    yesterday_name = "daily_cron_{}".format(
+        (datetime.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+    )
+    campaign_today = Campaign.objects.filter(name=today_name).first()
+    campaign_yesterday = Campaign.objects.filter(name=yesterday_name).first()
+    today_nb = (campaign_today.nb_queries or 0) if campaign_today else 0
+    yesterday_nb = (campaign_yesterday.nb_queries or 0) if campaign_yesterday else 0
+    delta = today_nb - yesterday_nb
 
     sparkline = []
     for i in range(30, 0, -1):
-        try:
-            campaign = get_object_or_404(Campaign, name=f"daily_cron_{(datetime.now() - timedelta(days=i-1)).strftime('%Y-%m-%d')}")
-            analytics_run = CampaignCompletion.objects.filter(campaign=campaign).aggregate(
-                total_queries=Sum('nb_queries_complete')
-                )['total_queries']
-            sparkline.append(analytics_run)
-        except:
+        day_name = f"daily_cron_{(datetime.now() - timedelta(days=i - 1)).strftime('%Y-%m-%d')}"
+        c = Campaign.objects.filter(name=day_name).first()
+        if not c:
             sparkline.append(0)
+            continue
+        analytics_run = CampaignCompletion.objects.filter(campaign=c).aggregate(
+            total_queries=Sum("nb_queries_complete")
+        )["total_queries"]
+        sparkline.append(analytics_run if analytics_run is not None else 0)
 
     context = {
-        'campaign_today_nb_queries': campaign_today.nb_queries,
-        'delta': delta,
-        'sparkline': sparkline,
-    }    
-    return render(request, 'db_analyticsrunintodaycampaign.html', context)
+        "campaign_today_nb_queries": today_nb,
+        "delta": delta,
+        "sparkline": sparkline,
+    }
+    return render(request, "db_analyticsrunintodaycampaign.html", context)
 
 @login_required
 @permission_required('qm.view_analytic', raise_exception=True)
@@ -80,12 +87,20 @@ def db_analyticsmatchingintodaycampaign(request):
 @login_required
 @permission_required('qm.view_analytic', raise_exception=True)
 def db_campaign_completion(request):
+    campaign = Campaign.objects.filter(
+        name="daily_cron_{}".format(datetime.today().strftime("%Y-%m-%d"))
+    ).first()
+    if not campaign:
+        code = """<h3>Campaign completion<br />(run/target)</h3>
+        <div class="num"><a href="/qm/managecampaigns">—</a></div>"""
+        return HttpResponse(code)
 
-    campaign = get_object_or_404(Campaign, name='daily_cron_{}'.format(datetime.today().strftime('%Y-%m-%d')))
     analytics_run = CampaignCompletion.objects.filter(campaign=campaign).aggregate(
-        total_queries=Sum('nb_queries_complete')
-        )['total_queries']
-    analytics_target = campaign.nb_queries
+        total_queries=Sum("nb_queries_complete")
+    )["total_queries"]
+    analytics_target = campaign.nb_queries or 0
+    if analytics_run is None:
+        analytics_run = 0
 
     code = "<h3>Campaign completion<br />(run/target)</h3>"
     if analytics_run == analytics_target:
@@ -97,20 +112,26 @@ def db_campaign_completion(request):
 @login_required
 @permission_required('qm.view_endpoint', raise_exception=True)
 def db_highestweightedscoretoday(request):
+    campaign = Campaign.objects.filter(
+        name="daily_cron_{}".format(datetime.today().strftime("%Y-%m-%d"))
+    ).first()
+    if not campaign:
+        code = """<h3>Endpoint with highest weighted relevance today</h3>
+        <div class="num"><a href="/reports/endpoints/">0</a></div>"""
+        return HttpResponse(code)
 
-    campaign = get_object_or_404(Campaign, name='daily_cron_{}'.format(datetime.today().strftime('%Y-%m-%d')))
+    qs = Endpoint.objects.filter(snapshot__campaign=campaign).values("hostname").annotate(
+        total_weighted_score=Sum(F("snapshot__analytic__weighted_relevance"))
+    ).order_by("-total_weighted_score")
 
-    qs = Endpoint.objects.filter(
-        snapshot__campaign=campaign
-    ).values('hostname').annotate(
-        total_weighted_score=Sum(F('snapshot__analytic__weighted_relevance'))
-    ).order_by('-total_weighted_score')
-
-    # Get the highest score
     highestweightedscore = qs.first()
-    
+    score = (
+        highestweightedscore["total_weighted_score"]
+        if highestweightedscore and highestweightedscore.get("total_weighted_score") is not None
+        else 0
+    )
     code = f"""<h3>Endpoint with highest weighted relevance today</h3>
-        <div class="num"><a href="/reports/endpoints/">{highestweightedscore['total_weighted_score']}</a></div>
+        <div class="num"><a href="/reports/endpoints/">{score}</a></div>
         """
     return HttpResponse(code)
 

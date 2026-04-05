@@ -1,0 +1,58 @@
+<div id="app_settings" class="app-settings-container">
+    <h2>Application settings</h2>
+    <p>
+        Values saved here override <code>settings.py</code> for this installation.
+        Add more sections below as needed (same tab, new blocks).
+    </p>
+
+    <div class="connector-conf-section" style="margin-bottom: 24px; padding: 15px; border: 1px solid #ccc; border-radius: 4px;">
+        <h3>AI_CONNECTOR</h3>
+        <p class="text-muted" style="font-size: 0.95em;">
+            Choose which installed plugin with domain <strong>AI</strong> is used for MITRE suggestions and the query assistant
+            (see <a href="https://deephunter.readthedocs.io/en/latest/settings.html" target="_blank" rel="noopener">settings documentation</a>).
+            Install AI plugins from the <em>Catalog</em> tab if they are missing from the list.
+        </p>
+        <p>
+            <strong>Effective value:</strong>
+            {% if ai_state.effective %}
+                <code>{{ ai_state.effective }}</code>
+            {% else %}
+                <span class="text-muted">(none — AI features off)</span>
+            {% endif %}
+            <br />
+            <strong>Value in settings.py:</strong>
+            {% if ai_state.file_default %}
+                <code>{{ ai_state.file_default }}</code>
+            {% else %}
+                <span class="text-muted">(empty)</span>
+            {% endif %}
+        </p>
+
+        <form hx-post="/config/app-settings/save-ai-connector/" hx-target="#app_settings" hx-swap="outerHTML">
+            {% csrf_token %}
+            <div style="margin-bottom: 12px;">
+                <label for="id_ai_connector"><strong>AI connector</strong></label><br />
+                <select id="id_ai_connector" name="ai_connector" style="min-width: 280px;">
+                    <option value="__inherit__" {% if ai_state.mode == 'inherit' %}selected{% endif %}>
+                        Use settings.py (no override)
+                    </option>
+                    <option value="__disabled__" {% if ai_state.mode == 'disabled' %}selected{% endif %}>
+                        Disabled — override (no AI)
+                    </option>
+                    {% if ai_connectors %}
+                        <optgroup label="Installed AI plugins">
+                            {% for c in ai_connectors %}
+                                <option value="{{ c.name }}" {% if ai_state.mode == 'named' and ai_state.effective == c.name %}selected{% endif %}>
+                                    {{ c.name }}{% if not c.enabled %} (disabled — enable under Connectors){% endif %}
+                                </option>
+                            {% endfor %}
+                        </optgroup>
+                    {% endif %}
+                </select>
+            </div>
+            <button type="submit" class="button">Save</button>
+        </form>
+    </div>
+
+    {# Extend this template with additional setting blocks (new forms + views + app_settings helpers). #}
+</div>
