@@ -467,12 +467,22 @@ document.body.addEventListener('htmx:afterRequest', function(evt) {
     }
 
     if (evt.detail.target.id === 'id_mitre_techniques') {
-        // Parse response as JSON
-        let response = evt.detail.xhr.responseText;
-        let selectedIds = JSON.parse(response);
-
-        // Update select options to match selectedIds
-        $('#id_mitre_techniques').val(selectedIds).trigger('change');
+        if (!evt.detail.successful) {
+            try {
+                let err = JSON.parse(evt.detail.xhr.responseText);
+                toastr.error(err.error || 'AI suggestion failed');
+            } catch (e) {
+                toastr.error('AI suggestion failed');
+            }
+            return;
+        }
+        try {
+            let response = evt.detail.xhr.responseText;
+            let selectedIds = JSON.parse(response);
+            $('#id_mitre_techniques').val(selectedIds).trigger('change');
+        } catch (e) {
+            toastr.error('Invalid response from AI connector');
+        }
     }
 
     // Open link in new tab if response is a URL

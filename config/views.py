@@ -6,11 +6,12 @@ from django.contrib.auth.models import Group, Permission
 from django.views.decorators.http import require_http_methods, require_POST
 from connectors.models import Connector
 from .models import ApiKey, AppSetting, Module, ModulePermission
-from .app_settings import AI_CONNECTOR_KEY, get_ai_connector_form_state
+from .app_settings import SETTINGS_REGISTRY, build_settings_context, is_appsetting_table_ready
 from qm.models import TasksStatus
 from notifications.utils import add_debug_notification, add_error_notification, add_success_notification
-from .utils import check_group_permission
+from .utils import check_group_permission, touch
 from celery import current_app
+import os
 
 DEBUG = settings.DEBUG
 
@@ -19,60 +20,106 @@ def deephunter_settings(request):
     return render(request, 'deephunter_settings.html')
 
 
+def _app_settings_ctx(**extra):
+    ctx = {
+        "groups": build_settings_context(),
+        "table_ready": is_appsetting_table_ready(),
+    }
+    ctx.update(extra)
+    return ctx
+
+
 @login_required
 @permission_required('config.view_admin', raise_exception=True)
 def app_settings_panel(request):
     """
     Application settings editable from the Web GUI (overrides settings.py when saved).
     """
-    ai_connectors = Connector.objects.filter(domain='ai').order_by('name')
-    ai_state = get_ai_connector_form_state()
-    return render(
-        request,
-        'partials/app_settings.html',
-        {
-            'ai_connectors': ai_connectors,
-            'ai_state': ai_state,
-        },
-    )
+    return render(request, 'partials/app_settings.html', _app_settings_ctx())
+
+
+_REGISTRY_KEYS = {e["key"]: e for e in SETTINGS_REGISTRY}
 
 
 @login_required
 @permission_required('config.view_admin', raise_exception=True)
 @require_http_methods(['POST'])
-def app_settings_save_ai_connector(request):
-    choice = (request.POST.get('ai_connector') or '').strip()
-    if choice == '__inherit__':
-        AppSetting.objects.filter(key=AI_CONNECTOR_KEY).delete()
-        add_success_notification('AI connector now follows the value in settings.py.')
-    elif choice == '__disabled__':
-        AppSetting.objects.update_or_create(
-            key=AI_CONNECTOR_KEY,
-            defaults={'value': ''},
-        )
-        add_success_notification('AI features are disabled (override saved).')
-    else:
-        if not choice:
-            add_error_notification('Select an AI connector or another option.')
-        elif not Connector.objects.filter(domain='ai', name=choice).exists():
-            add_error_notification('Invalid AI connector.')
-        else:
-            AppSetting.objects.update_or_create(
-                key=AI_CONNECTOR_KEY,
-                defaults={'value': choice},
-            )
-            add_success_notification(f'AI connector set to "{choice}".')
+def app_settings_save(request):
+    """
+    Generic save for any registered setting.
+    POST params: key=<SETTING_KEY> value=<new_value> action=inherit|override
+    """
+    key = request.POST.get("key", "").strip()
+    action = request.POST.get("action", "override").strip()
+    value = request.POST.get("value", "").strip()
 
-    ai_connectors = Connector.objects.filter(domain='ai').order_by('name')
-    ai_state = get_ai_connector_form_state()
-    return render(
-        request,
-        'partials/app_settings.html',
-        {
-            'ai_connectors': ai_connectors,
-            'ai_state': ai_state,
-        },
-    )
+    entry = _REGISTRY_KEYS.get(key)
+    if not entry:
+        add_error_notification(f"Unknown setting: {key}")
+        return render(request, 'partials/app_settings.html', _app_settings_ctx())
+
+    if entry.get("readonly"):
+        add_error_notification(f"{key} is read-only and cannot be changed from the GUI.")
+        return render(request, 'partials/app_settings.html', _app_settings_ctx())
+
+    try:
+        if action == "inherit":
+            AppSetting.objects.filter(key=key).delete()
+            add_success_notification(f'{entry.get("label", key)} now follows settings.py.')
+        else:
+            stype = entry["type"]
+            if stype == "bool":
+                value = "True" if value in ("True", "true", "1", "on") else "False"
+            elif stype == "int":
+                try:
+                    int(value)
+                except (ValueError, TypeError):
+                    add_error_notification(f'{entry.get("label", key)}: expected an integer.')
+                    return render(request, 'partials/app_settings.html', _app_settings_ctx())
+            elif stype == "choice":
+                allowed = [c[0] for c in entry.get("choices", [])]
+                if value not in allowed:
+                    add_error_notification(f'{entry.get("label", key)}: invalid choice "{value}".')
+                    return render(request, 'partials/app_settings.html', _app_settings_ctx())
+            elif stype == "ai_connector":
+                if value and not Connector.objects.filter(domain="ai", name=value).exists():
+                    add_error_notification(f'Invalid AI connector: "{value}".')
+                    return render(request, 'partials/app_settings.html', _app_settings_ctx())
+
+            AppSetting.objects.update_or_create(key=key, defaults={"value": value})
+            add_success_notification(f'{entry.get("label", key)} saved.')
+    except Exception as exc:
+        add_error_notification(
+            f'Could not save {entry.get("label", key)}: {exc}. '
+            'Make sure the config_appsetting table exists '
+            '(run: python manage.py runscript upgrade.fr_327_app_setting).'
+        )
+
+    return render(request, 'partials/app_settings.html', _app_settings_ctx())
+
+
+@login_required
+@permission_required('config.view_admin', raise_exception=True)
+@require_http_methods(['POST'])
+def app_settings_restart(request):
+    """
+    Touch wsgi.py to force mod_wsgi to reload Django, and restart Celery
+    so workers pick up the updated AppSetting values.
+    """
+    try:
+        wsgi_path = os.path.join(settings.BASE_DIR, 'deephunter', 'wsgi.py')
+        touch(wsgi_path)
+    except Exception as exc:
+        add_error_notification(f'Failed to touch wsgi.py: {exc}')
+
+    try:
+        current_app.control.broadcast('shutdown')
+    except Exception:
+        pass
+
+    add_success_notification('Application restart triggered. Changes will take effect momentarily.')
+    return render(request, 'partials/app_settings.html', _app_settings_ctx(restart_triggered=True))
+
 
 @login_required
 @permission_required('config.change_modulepermission', raise_exception=True)

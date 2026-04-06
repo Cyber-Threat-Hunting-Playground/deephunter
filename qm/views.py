@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
@@ -28,6 +30,8 @@ from .forms import (ReviewForm, EditAnalyticDescriptionForm, EditAnalyticNotesFo
                     ThreatForm, ActorForm, VulnerabilityForm, QueryAIAssistantForm)
 from notifications.utils import add_error_notification, add_debug_notification
 import base64
+
+logger = logging.getLogger(__name__)
 
 # Dynamically import all connectors
 import importlib
@@ -1359,22 +1363,28 @@ def clone_analytic(request, analytic_id):
 def suggest_mitre_with_ai(request):
     if request.method == "POST":
         query = request.POST.get('query', '')
-        #add_debug_notification(f'AI Suggest MITRE Techniques for query: {query}')
-        
+
         ai_name = get_ai_connector()
         if ai_name and is_connector_enabled(ai_name) and all_connectors.get(ai_name):
-            # call the AI connector to get MITRE ATT&CK techniques
-            mitre_ttps = all_connectors.get(ai_name).get_mitre_techniques_from_query(query)
-            # extract IDs corresponding to MitreTechnique objects in DB
+            try:
+                mitre_ttps = all_connectors.get(ai_name).get_mitre_techniques_from_query(query)
+            except Exception as e:
+                logger.exception("AI connector '%s' failed for suggest-mitre-with-ai", ai_name)
+                return JsonResponse(
+                    {"error": f"AI connector error: {e}"},
+                    status=500,
+                )
+
             ttp_ids = []
             for mitre_ttp in mitre_ttps:
-                if MitreTechnique.objects.filter(mitre_id=mitre_ttp).exists():
-                    id = MitreTechnique.objects.get(mitre_id=mitre_ttp).id
-                    ttp_ids.append(id)
+                try:
+                    technique = MitreTechnique.objects.get(mitre_id=mitre_ttp)
+                    ttp_ids.append(technique.id)
+                except MitreTechnique.DoesNotExist:
+                    pass
 
             return JsonResponse(list(set(ttp_ids)), safe=False)
-    
-    # in case of connector not enabled or not POST, return empty list
+
     return JsonResponse([], safe=False)
 
 @login_required

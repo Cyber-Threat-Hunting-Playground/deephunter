@@ -2,57 +2,153 @@
     <h2>Application settings</h2>
     <p>
         Values saved here override <code>settings.py</code> for this installation.
-        Add more sections below as needed (same tab, new blocks).
+        Settings are persisted to the database immediately on save, but they only take full effect
+        after an application restart. Click <strong>Apply &amp; Restart</strong> once you are done editing.
     </p>
 
-    <div class="connector-conf-section" style="margin-bottom: 24px; padding: 15px; border: 1px solid #ccc; border-radius: 4px;">
-        <h3>AI_CONNECTOR</h3>
-        <p class="text-muted" style="font-size: 0.95em;">
-            Choose which installed plugin with domain <strong>AI</strong> is used for MITRE suggestions and the query assistant
-            (see <a href="https://deephunter.readthedocs.io/en/latest/settings.html" target="_blank" rel="noopener">settings documentation</a>).
-            Install AI plugins from the <em>Catalog</em> tab if they are missing from the list.
-        </p>
-        <p>
-            <strong>Effective value:</strong>
-            {% if ai_state.effective %}
-                <code>{{ ai_state.effective }}</code>
-            {% else %}
-                <span class="text-muted">(none — AI features off)</span>
-            {% endif %}
-            <br />
-            <strong>Value in settings.py:</strong>
-            {% if ai_state.file_default %}
-                <code>{{ ai_state.file_default }}</code>
-            {% else %}
-                <span class="text-muted">(empty)</span>
-            {% endif %}
-        </p>
+    <form hx-post="/config/app-settings/restart/" hx-target="#app_settings" hx-swap="outerHTML">
+        {% csrf_token %}
+        <button type="submit" class="button" title="Restart Apache/mod_wsgi and Celery to apply all saved settings">
+            <i class="fas fa-sync-alt"></i> Apply &amp; Restart
+        </button>
+    </form>
 
-        <form hx-post="/config/app-settings/save-ai-connector/" hx-target="#app_settings" hx-swap="outerHTML">
-            {% csrf_token %}
-            <div style="margin-bottom: 12px;">
-                <label for="id_ai_connector"><strong>AI connector</strong></label><br />
-                <select id="id_ai_connector" name="ai_connector" style="min-width: 280px;">
-                    <option value="__inherit__" {% if ai_state.mode == 'inherit' %}selected{% endif %}>
-                        Use settings.py (no override)
-                    </option>
-                    <option value="__disabled__" {% if ai_state.mode == 'disabled' %}selected{% endif %}>
-                        Disabled — override (no AI)
-                    </option>
-                    {% if ai_connectors %}
-                        <optgroup label="Installed AI plugins">
-                            {% for c in ai_connectors %}
-                                <option value="{{ c.name }}" {% if ai_state.mode == 'named' and ai_state.effective == c.name %}selected{% endif %}>
-                                    {{ c.name }}{% if not c.enabled %} (disabled — enable under Connectors){% endif %}
-                                </option>
-                            {% endfor %}
-                        </optgroup>
-                    {% endif %}
-                </select>
-            </div>
-            <button type="submit" class="button">Save</button>
-        </form>
+    {% if not table_ready %}
+    <div class="alert alert-danger d-flex flex-row" style="margin-top: 12px;">
+        <div class="padright20"><i class="fas fa-fw fa-exclamation-triangle mr-3 mt-1"></i></div>
+        <div class="notification-message">
+            The <code>config_appsetting</code> database table does not exist yet. Saving will fail until you run:<br />
+            <code>python manage.py runscript upgrade.fr_327_app_setting</code>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if restart_triggered %}
+    <div class="alert alert-success d-flex flex-row" style="margin-top: 12px;">
+        <div class="padright20"><i class="fas fa-fw fa-check-circle mr-3 mt-1"></i></div>
+        <div class="notification-message">
+            Restart triggered. The web server and Celery workers are reloading — the page may briefly become unresponsive.
+        </div>
+    </div>
+    {% endif %}
+
+    <hr style="margin: 20px 0;" />
+
+    <div id="settings_accordion">
+    {% for group in groups %}
+        <h3>{{ group.name }}</h3>
+        <div>
+            <table class="mitre" style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th style="width: 28%;">Setting</th>
+                        <th style="width: 37%;">Value</th>
+                        <th style="width: 15%;">settings.py</th>
+                        <th style="width: 20%;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for s in group.settings %}
+                    <tr>
+                        <td title="{{ s.description }}">
+                            <strong>{{ s.label }}</strong>
+                            <br /><small class="text-muted">{{ s.description }}</small>
+                        </td>
+
+                        {# ── Value cell ─────────────────────────────────── #}
+                        <td>
+                            <form id="form_{{ s.key }}"
+                                  hx-post="/config/app-settings/save/"
+                                  hx-target="#app_settings"
+                                  hx-swap="outerHTML">
+                                {% csrf_token %}
+                                <input type="hidden" name="key" value="{{ s.key }}" />
+
+                                {% if s.readonly %}
+                                    <code>{{ s.effective }}</code>
+
+                                {% elif s.type == "bool" %}
+                                    <select name="value" style="min-width: 100px;">
+                                        <option value="True"  {% if s.effective == "True" %}selected{% endif %}>True</option>
+                                        <option value="False" {% if s.effective == "False" %}selected{% endif %}>False</option>
+                                    </select>
+
+                                {% elif s.type == "int" %}
+                                    <input type="number" name="value" value="{{ s.effective }}" style="width: 120px;" />
+
+                                {% elif s.type == "choice" %}
+                                    <select name="value" style="min-width: 160px;">
+                                        {% for val, lbl in s.choices %}
+                                            <option value="{{ val }}" {% if s.effective == val %}selected{% endif %}>{{ lbl }}</option>
+                                        {% endfor %}
+                                    </select>
+
+                                {% elif s.type == "ai_connector" %}
+                                    <select name="value" style="min-width: 160px;">
+                                        <option value="" {% if not s.effective %}selected{% endif %}>(disabled — no AI)</option>
+                                        {% for name, enabled in s.choices %}
+                                            <option value="{{ name }}" {% if s.effective == name %}selected{% endif %}>
+                                                {{ name }}{% if not enabled %} (disabled — enable under Connectors){% endif %}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+
+                                {% else %}
+                                    <input type="text" name="value" value="{{ s.effective }}" style="width: 100%;" />
+
+                                {% endif %}
+
+                                {% if not s.readonly %}
+                                    <div style="margin-top: 6px;">
+                                        <button type="submit" name="action" value="override" class="button" style="font-size: 0.85em;">Save</button>
+                                        {% if s.has_override %}
+                                            <button type="submit" name="action" value="inherit" class="button" style="font-size: 0.85em;"
+                                                    title="Remove override and revert to settings.py value">
+                                                <i class="fas fa-undo"></i> Revert
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </form>
+                        </td>
+
+                        {# ── File default cell ──────────────────────────── #}
+                        <td>
+                            <code style="font-size: 0.9em;">{{ s.file_default_display }}</code>
+                        </td>
+
+                        {# ── Status cell ────────────────────────────────── #}
+                        <td class="acenter">
+                            {% if s.has_override %}
+                                <span style="color: #28a745;" title="Value overridden from GUI"><i class="fas fa-database"></i> Override</span>
+                            {% else %}
+                                <span class="text-muted" title="Using value from settings.py"><i class="fas fa-file-code"></i> settings.py</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endfor %}
     </div>
 
-    {# Extend this template with additional setting blocks (new forms + views + app_settings helpers). #}
+    <hr style="margin: 20px 0;" />
+
+    <form hx-post="/config/app-settings/restart/" hx-target="#app_settings" hx-swap="outerHTML">
+        {% csrf_token %}
+        <button type="submit" class="button" title="Restart Apache/mod_wsgi and Celery to apply all saved settings">
+            <i class="fas fa-sync-alt"></i> Apply &amp; Restart
+        </button>
+    </form>
 </div>
+
+<script type="text/javascript" nonce="jg6kl5z3v2">
+    $(function () {
+        $("#settings_accordion").accordion({
+            collapsible: true,
+            heightStyle: "content",
+            active: false
+        });
+    });
+</script>

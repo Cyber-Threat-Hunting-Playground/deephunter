@@ -4,7 +4,8 @@ from . import views
 urlpatterns = [
     path('deephunter-settings/', views.deephunter_settings, name='deephunter_settings'),
     path('app-settings/', views.app_settings_panel, name='app_settings_panel'),
-    path('app-settings/save-ai-connector/', views.app_settings_save_ai_connector, name='app_settings_save_ai_connector'),
+    path('app-settings/save/', views.app_settings_save, name='app_settings_save'),
+    path('app-settings/restart/', views.app_settings_restart, name='app_settings_restart'),
     path('permissions/', views.permissions, name='permissions'), 
     path('update-permission/<int:group_id>/<int:permission_id>/', views.update_permission, name='update_permission'),
     path('running-tasks/', views.running_tasks, name='running_tasks'),
