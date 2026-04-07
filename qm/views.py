@@ -29,7 +29,9 @@ from .forms import (ReviewForm, EditAnalyticDescriptionForm, EditAnalyticNotesFo
                     EditAnalyticQueryForm, SavedSearchForm, AnalyticForm, TagForm,
                     ThreatForm, ActorForm, VulnerabilityForm, QueryAIAssistantForm)
 from notifications.utils import add_error_notification, add_debug_notification
+from config.models import log_ai_query
 import base64
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -1365,25 +1367,53 @@ def suggest_mitre_with_ai(request):
         query = request.POST.get('query', '')
 
         ai_name = get_ai_connector()
-        if ai_name and is_connector_enabled(ai_name) and all_connectors.get(ai_name):
+        if not ai_name:
+            log_ai_query(user=request.user, connector_name="", action="mitre_suggestion",
+                         input_text=query, success=False,
+                         error_message="No AI connector configured")
+            return JsonResponse([], safe=False)
+
+        if not is_connector_enabled(ai_name):
+            log_ai_query(user=request.user, connector_name=ai_name, action="mitre_suggestion",
+                         input_text=query, success=False,
+                         error_message=f"AI connector '{ai_name}' is not enabled")
+            return JsonResponse([], safe=False)
+
+        if not all_connectors.get(ai_name):
+            log_ai_query(user=request.user, connector_name=ai_name, action="mitre_suggestion",
+                         input_text=query, success=False,
+                         error_message=f"AI connector '{ai_name}' is not installed (missing plugin symlink)")
+            return JsonResponse([], safe=False)
+
+        t0 = time.monotonic()
+        try:
+            mitre_ttps = all_connectors.get(ai_name).get_mitre_techniques_from_query(query)
+        except Exception as e:
+            duration_ms = int((time.monotonic() - t0) * 1000)
+            logger.exception("AI connector '%s' failed for suggest-mitre-with-ai", ai_name)
+            log_ai_query(
+                user=request.user, connector_name=ai_name, action="mitre_suggestion",
+                input_text=query, success=False,
+                error_message=str(e), duration_ms=duration_ms,
+            )
+            return JsonResponse({"error": f"AI connector error: {e}"}, status=500)
+
+        duration_ms = int((time.monotonic() - t0) * 1000)
+        raw_output = ", ".join(mitre_ttps) if mitre_ttps else ""
+        log_ai_query(
+            user=request.user, connector_name=ai_name, action="mitre_suggestion",
+            input_text=query, output_text=raw_output, duration_ms=duration_ms,
+        )
+
+        ttp_ids = []
+        for mitre_ttp in mitre_ttps:
             try:
-                mitre_ttps = all_connectors.get(ai_name).get_mitre_techniques_from_query(query)
-            except Exception as e:
-                logger.exception("AI connector '%s' failed for suggest-mitre-with-ai", ai_name)
-                return JsonResponse(
-                    {"error": f"AI connector error: {e}"},
-                    status=500,
-                )
+                technique = MitreTechnique.objects.get(mitre_id=mitre_ttp)
+                ttp_ids.append(technique.id)
+            except MitreTechnique.DoesNotExist:
+                pass
 
-            ttp_ids = []
-            for mitre_ttp in mitre_ttps:
-                try:
-                    technique = MitreTechnique.objects.get(mitre_id=mitre_ttp)
-                    ttp_ids.append(technique.id)
-                except MitreTechnique.DoesNotExist:
-                    pass
-
-            return JsonResponse(list(set(ttp_ids)), safe=False)
+        return JsonResponse(list(set(ttp_ids)), safe=False)
 
     return JsonResponse([], safe=False)
 
@@ -1473,6 +1503,10 @@ def query_ai_assistant(request):
     if form.is_valid():
         ai_name = get_ai_connector()
         if not ai_name or not is_connector_enabled(ai_name):
+            err = "No AI connector configured" if not ai_name else f"AI connector '{ai_name}' is not enabled"
+            log_ai_query(user=request.user, connector_name=ai_name or "", action="query_assistant",
+                         input_text=form.cleaned_data.get('question', ''), success=False,
+                         error_message=err)
             add_error_notification(
                 'Configure and enable an AI connector under Settings → Application (or settings.py).'
             )
@@ -1480,6 +1514,10 @@ def query_ai_assistant(request):
 
         ai_module = all_connectors.get(ai_name)
         if not ai_module or not hasattr(ai_module, 'write_query_with_ai'):
+            err_msg = f"AI connector '{ai_name}' is not installed" if not ai_module else f"AI connector '{ai_name}' does not support write_query_with_ai"
+            log_ai_query(user=request.user, connector_name=ai_name, action="query_assistant",
+                         input_text=form.cleaned_data.get('question', ''), success=False,
+                         error_message=err_msg)
             add_error_notification('The selected AI connector does not support the query assistant.')
             return render(request, 'partials/query_ai_assistant.html', {'form': form})
 
@@ -1493,11 +1531,35 @@ def query_ai_assistant(request):
 
         {form.cleaned_data['question']}
         """
-        #add_debug_notification(f'Question for AI: {question_for_ai}')
 
-        ai_response = ai_module.write_query_with_ai(question_for_ai)
-        #add_debug_notification(f'AI response: {ai_response}')
-        # we need to encode the response because it can't contain new lines
+        t0 = time.monotonic()
+        try:
+            ai_response = ai_module.write_query_with_ai(question_for_ai)
+        except Exception as e:
+            duration_ms = int((time.monotonic() - t0) * 1000)
+            logger.exception("AI connector '%s' failed for query-ai-assistant", ai_name)
+            log_ai_query(
+                user=request.user,
+                connector_name=ai_name,
+                action="query_assistant",
+                input_text=question_for_ai,
+                success=False,
+                error_message=str(e),
+                duration_ms=duration_ms,
+            )
+            add_error_notification(f"AI connector error: {e}")
+            return render(request, 'partials/query_ai_assistant.html', {'form': form})
+
+        duration_ms = int((time.monotonic() - t0) * 1000)
+        log_ai_query(
+            user=request.user,
+            connector_name=ai_name,
+            action="query_assistant",
+            input_text=question_for_ai,
+            output_text=ai_response,
+            duration_ms=duration_ms,
+        )
+
         encoded_response = base64.b64encode(ai_response.encode('utf-8'))
         response['HX-Query'] = encoded_response
         response['HX-Connector'] = form.cleaned_data['connector'].id

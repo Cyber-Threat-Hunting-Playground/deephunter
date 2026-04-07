@@ -1,5 +1,10 @@
+import logging
+
+from django.conf import settings as django_settings
 from django.db import models
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 class Module(models.Model):
     name = models.CharField(max_length=50, unique=True)
@@ -67,3 +72,50 @@ class AppSetting(models.Model):
 
     class Meta:
         ordering = ["key"]
+
+
+class AIQueryLog(models.Model):
+    ACTION_CHOICES = [
+        ('mitre_suggestion', 'MITRE Suggestion'),
+        ('query_assistant', 'Query Assistant'),
+    ]
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    user = models.ForeignKey(
+        django_settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    connector_name = models.CharField(max_length=40)
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    input_text = models.TextField()
+    output_text = models.TextField(blank=True, default="")
+    success = models.BooleanField(default=True)
+    error_message = models.TextField(blank=True, default="")
+    duration_ms = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.created_at:%Y-%m-%d %H:%M} | {self.connector_name} | {self.get_action_display()}"
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+def log_ai_query(*, user, connector_name, action, input_text,
+                 output_text="", success=True, error_message="", duration_ms=0):
+    """Create an AIQueryLog entry. Silently swallows DB errors so logging
+    never breaks the caller."""
+    try:
+        AIQueryLog.objects.create(
+            user=user,
+            connector_name=connector_name,
+            action=action,
+            input_text=input_text,
+            output_text=output_text,
+            success=success,
+            error_message=error_message,
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        logger.exception("Failed to write AIQueryLog entry")

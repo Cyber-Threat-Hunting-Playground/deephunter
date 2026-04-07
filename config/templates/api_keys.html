@@ -1,6 +1,8 @@
 <div id="api_keys" class="api-keys-container">
     <h2>API Keys Management</h2>
     <p>Manage API keys used to authenticate programmatic access to the system. Treat these keys like passwords.</p>
+    <p>The API is available at <code style="background-color: #f4f4f4; padding: 2px 5px; border-radius: 3px; font-family: monospace;">{{ request.scheme }}://{{ request.get_host }}/api/v1/</code>
+    — <a href="/api/v1/docs/" target="_blank">Swagger documentation</a></p>
     
     <div class="key-generation-form" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 4px;">
         <h3>Generate New Key</h3>

@@ -15,4 +15,5 @@ urlpatterns = [
     path('api-keys/', views.api_keys, name='api_keys'),
     path('generate-api-key/', views.generate_api_key, name='generate_api_key'),
     path('delete-api-key/<int:pk>/', views.delete_api_key, name='delete_api_key'),
+    path('ai-debug-log/', views.ai_debug_log, name='ai_debug_log'),
 ]

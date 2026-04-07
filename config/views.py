@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth.models import Group, Permission
 from django.views.decorators.http import require_http_methods, require_POST
 from connectors.models import Connector
-from .models import ApiKey, AppSetting, Module, ModulePermission
+from .models import AIQueryLog, ApiKey, AppSetting, Module, ModulePermission
 from .app_settings import SETTINGS_REGISTRY, build_settings_context, is_appsetting_table_ready
 from qm.models import TasksStatus
 from notifications.utils import add_debug_notification, add_error_notification, add_success_notification
@@ -285,4 +285,38 @@ def delete_api_key(request, pk):
     return render(request, 'api_keys.html', {
         'api_keys': keys,
         'expiration_choices': EXPIRATION_CHOICES,
+    })
+
+
+@login_required
+@permission_required('config.view_admin', raise_exception=True)
+def ai_debug_log(request):
+    qs = AIQueryLog.objects.select_related('user').all()
+
+    connector = request.GET.get('connector', '')
+    action = request.GET.get('action', '')
+    success = request.GET.get('success', '')
+
+    if connector:
+        qs = qs.filter(connector_name=connector)
+    if action:
+        qs = qs.filter(action=action)
+    if success in ('1', '0'):
+        qs = qs.filter(success=(success == '1'))
+
+    logs = qs[:200]
+
+    connector_choices = (
+        AIQueryLog.objects.values_list('connector_name', flat=True)
+        .distinct()
+        .order_by('connector_name')
+    )
+
+    return render(request, 'partials/ai_debug_log.html', {
+        'logs': logs,
+        'connector_choices': connector_choices,
+        'action_choices': AIQueryLog.ACTION_CHOICES,
+        'f_connector': connector,
+        'f_action': action,
+        'f_success': success,
     })
