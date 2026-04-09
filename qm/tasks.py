@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import numpy as np
 from scipy import stats
 from math import isnan
-from qm.models import Analytic, Snapshot, Campaign, Endpoint, TasksStatus
+from qm.models import Analytic, AnalyticMeta, Snapshot, Campaign, Endpoint, TasksStatus
 from connectors.models import Connector
 from qm.utils import run_campaign, get_campaign_date
 import requests
@@ -32,11 +32,13 @@ def regenerate_stats(analytic_id):
     analytic = get_object_or_404(Analytic, pk=analytic_id)
     add_info_notification(f'Regenerate stats task started for analytic "{analytic.name}"')
 
-    # we assume that analytic won't fail (flag will be set later if analytic fails).
-    analytic.analyticmeta.query_error = False
-    analytic.analyticmeta.query_error_message = ''
-    analytic.analyticmeta.query_error_date = None
-    analytic.analyticmeta.save()
+    # Ensure AnalyticMeta exists (backfill for analytics created before the model was introduced)
+    meta, _ = AnalyticMeta.objects.get_or_create(analytic=analytic)
+
+    meta.query_error = False
+    meta.query_error_message = ''
+    meta.query_error_date = None
+    meta.save()
     
     # Create Campaign
     # Date of campaign is when the script runs (today) while snapshot date is the day before (detection date)

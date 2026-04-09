@@ -1,6 +1,6 @@
 from django.conf import settings
 from datetime import datetime, timedelta
-from qm.models import Campaign, Analytic, Snapshot, Endpoint, TasksStatus, CampaignCompletion
+from qm.models import Campaign, Analytic, AnalyticMeta, Snapshot, Endpoint, TasksStatus, CampaignCompletion
 from connectors.models import Connector
 from django.shortcuts import get_object_or_404
 import numpy as np
@@ -137,11 +137,14 @@ def run_campaign(campaigndate=None, debug=False, celery=False):
     # Filter analytic with the "run_daily" flag set
     for progress, analytic in enumerate(analytics, start=1):
         
+        # Ensure AnalyticMeta exists (backfill for analytics created before the model was introduced)
+        meta, _ = AnalyticMeta.objects.get_or_create(analytic=analytic)
+
         # we assume that analytic won't fail (flag will be set later if analytic fails).
-        analytic.analyticmeta.query_error = False
-        analytic.analyticmeta.query_error_message = ''
-        analytic.analyticmeta.query_error_date = None
-        analytic.analyticmeta.save()
+        meta.query_error = False
+        meta.query_error_message = ''
+        meta.query_error_date = None
+        meta.save()
                 
         # store current time (used to update snapshot runtime)
         start_runtime = datetime.now()

@@ -396,7 +396,7 @@ MIDDLEWARE
 		'django.contrib.auth.middleware.AuthenticationMiddleware',
 		'django.contrib.messages.middleware.MessageMiddleware',
 		'django.middleware.clickjacking.XFrameOptionsMiddleware',
-		'simple_history.middleware.HistoryRequestMiddleware',
+		'deephunter.history_middleware.SafeHistoryRequestMiddleware',
 		'django_auto_logout.middleware.auto_logout',
 	]
 

@@ -87,6 +87,9 @@ def pre_save_handler(sender, instance, **kwargs):
         # Retrieve the current value of the field from the database
         original_instance = Analytic.objects.get(pk=instance.pk)
 
+        # Ensure AnalyticMeta exists (handles analytics created before AnalyticMeta was introduced)
+        AnalyticMeta.objects.get_or_create(analytic=instance)
+
         ### Reset counters, error flag and message, and last_time_seen when the "query" field of the analytic is updated
         ### or when zscore thresholds are updated
         if (original_instance.query != instance.query
@@ -163,7 +166,7 @@ def post_save_handler(sender, instance, created, **kwargs):
 
     if created:
         # for new analytics, we create the AnalyticMeta object associated with the analytic
-        AnalyticMeta.objects.create(analytic=instance)
+        AnalyticMeta.objects.get_or_create(analytic=instance)
 
         # Workflow. Set the next review date if the analytic is published
         if instance.status == 'PUB':
@@ -173,12 +176,15 @@ def post_save_handler(sender, instance, created, **kwargs):
             else:
                 instance.analyticmeta.next_review_date = datetime.now().date() + timedelta(days=DAYS_BEFORE_REVIEW)
 
+    # Ensure AnalyticMeta exists before accessing it
+    meta, _ = AnalyticMeta.objects.get_or_create(analytic=instance)
+
     # When analytic is archived, set the next_review_date to None
     if instance.status == 'ARCH':
-        instance.analyticmeta.next_review_date = None
+        meta.next_review_date = None
 
     # Save changes to AnalyticMeta
-    instance.analyticmeta.save()
+    meta.save()
 
     if created:
         # New analytics
